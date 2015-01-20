@@ -1,12 +1,17 @@
 package tvdb
 
 import (
+	"os"
 	"testing"
 )
 
+const APIKey = "DECE3B6B5464C552"
+
+var tvdb *TVDB
+
 // TestGetSeries tests the GetSeries function.
 func TestGetSeries(t *testing.T) {
-	seriesList, err := GetSeries("The Simpsons")
+	seriesList, err := tvdb.GetSeries("The Simpsons")
 
 	if err != nil {
 		t.Error(err)
@@ -23,7 +28,7 @@ func TestGetSeries(t *testing.T) {
 
 // TestGetSeriesByID tests the GetSeriesByID function.
 func TestGetSeriesByID(t *testing.T) {
-	series, err := GetSeriesByID(71663)
+	series, err := tvdb.GetSeriesByID(71663)
 
 	if err != nil {
 		t.Error(err)
@@ -36,7 +41,7 @@ func TestGetSeriesByID(t *testing.T) {
 
 // TestGetSeriesByIMDBID tests the GetSeriesByIMDBID function.
 func TestGetSeriesByIMDBID(t *testing.T) {
-	series, err := GetSeriesByIMDBID("tt0096697")
+	series, err := tvdb.GetSeriesByIMDBID("tt0096697")
 
 	if err != nil {
 		t.Error(err)
@@ -49,7 +54,7 @@ func TestGetSeriesByIMDBID(t *testing.T) {
 
 // TestSearchSeries tests the SearchSeries function.
 func TestSearchSeries(t *testing.T) {
-	seriesList, err := SearchSeries("The Simpsons", 5)
+	seriesList, err := tvdb.SearchSeries("The Simpsons", 5)
 
 	if err != nil {
 		t.Error(err)
@@ -66,7 +71,7 @@ func TestSearchSeries(t *testing.T) {
 
 // TestSeriesGetDetail tests the Series type's GetDetail function.
 func TestSeriesGetDetail(t *testing.T) {
-	series, err := GetSeriesByID(71663)
+	series, err := tvdb.GetSeriesByID(71663)
 
 	if err != nil {
 		t.Error(err)
@@ -76,7 +81,7 @@ func TestSeriesGetDetail(t *testing.T) {
 		t.Error("series.Seasons should be nil.")
 	}
 
-	series.GetDetail()
+	tvdb.GetSeriesDetail(series)
 
 	if series.Seasons == nil {
 		t.Error("series.Seasons should not be nil.")
@@ -85,7 +90,7 @@ func TestSeriesGetDetail(t *testing.T) {
 
 // TestSeriesListGetDetail tests the SeriesList type's GetDetail function.
 func TestSeriesListGetDetail(t *testing.T) {
-	seriesList, err := GetSeries("The Simpsons")
+	seriesList, err := tvdb.GetSeries("The Simpsons")
 
 	if err != nil {
 		t.Error(err)
@@ -97,11 +102,16 @@ func TestSeriesListGetDetail(t *testing.T) {
 		}
 	}
 
-	seriesList.GetDetail()
+	tvdb.GetSeriesListDetail(&seriesList)
 
 	for _, series := range seriesList.Series {
 		if series.Seasons == nil {
 			t.Error("series.Seasons should not be nil.")
 		}
 	}
+}
+
+func TestMain(m *testing.M) {
+	tvdb = NewTVDB(APIKey)
+	os.Exit(m.Run())
 }

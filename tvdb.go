@@ -1,4 +1,3 @@
-// Package tvdb provides a simple, sexy and easy golang module for TheTVDB.
 package tvdb
 
 import (
@@ -14,9 +13,6 @@ import (
 )
 
 const (
-	// APIKey is the TheTVDB API key.
-	APIKey = "DECE3B6B5464C552"
-
 	// GetSeriesURL is used to get basic series information by name.
 	GetSeriesURL = "http://thetvdb.com/api/GetSeries.php?seriesname=%v"
 
@@ -128,10 +124,101 @@ type EpisodeList struct {
 	Episodes []*Episode `xml:"Episode"`
 }
 
+type TVDB struct {
+	APIKey string
+}
+
+func NewTVDB(apiKey string) *TVDB {
+	return &TVDB{
+		APIKey: apiKey,
+	}
+}
+
+// GetSeries gets a list of TV series by name, by performing a simple search.
+func (t *TVDB) GetSeries(name string) (seriesList SeriesList, err error) {
+	response, err := http.Get(fmt.Sprintf(GetSeriesURL, url.QueryEscape(name)))
+
+	if err != nil {
+		return
+	}
+
+	data, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return
+	}
+
+	err = xml.Unmarshal(data, &seriesList)
+
+	return
+}
+
+// GetSeriesByID gets a TV series by ID.
+func (t *TVDB) GetSeriesByID(id uint64) (series *Series, err error) {
+	response, err := http.Get(fmt.Sprintf(GetSeriesByIDURL, t.APIKey, id))
+
+	if err != nil {
+		return
+	}
+
+	data, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return
+	}
+
+	seriesList := SeriesList{}
+
+	if err = xml.Unmarshal(data, &seriesList); err != nil {
+		return
+	}
+
+	if len(seriesList.Series) != 1 {
+		err = errors.New("incorrect number of series")
+
+		return
+	}
+
+	series = seriesList.Series[0]
+
+	return
+}
+
+// GetSeriesByIMDBID gets series from IMDb's ID.
+func (t *TVDB) GetSeriesByIMDBID(id string) (series *Series, err error) {
+	response, err := http.Get(fmt.Sprintf(GetSeriesByIMDBIDURL, id))
+
+	if err != nil {
+		return
+	}
+
+	data, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return
+	}
+
+	seriesList := SeriesList{}
+
+	if err = xml.Unmarshal(data, &seriesList); err != nil {
+		return
+	}
+
+	if len(seriesList.Series) != 1 {
+		err = errors.New("incorrect number of series")
+
+		return
+	}
+
+	series = seriesList.Series[0]
+
+	return
+}
+
 // GetDetail gets more detail for all TV shows in a list.
-func (seriesList *SeriesList) GetDetail() (err error) {
+func (t *TVDB) GetSeriesListDetail(seriesList *SeriesList) (err error) {
 	for seriesIndex := range seriesList.Series {
-		if err = seriesList.Series[seriesIndex].GetDetail(); err != nil {
+		if err = t.GetSeriesDetail(seriesList.Series[seriesIndex]); err != nil {
 			return
 		}
 	}
@@ -140,8 +227,8 @@ func (seriesList *SeriesList) GetDetail() (err error) {
 }
 
 // GetDetail gets more detail for a TV show, including information on it's episodes.
-func (series *Series) GetDetail() (err error) {
-	response, err := http.Get(fmt.Sprintf(GetDetailURL, APIKey, strconv.FormatUint(series.ID, 10)))
+func (t *TVDB) GetSeriesDetail(series *Series) (err error) {
+	response, err := http.Get(fmt.Sprintf(GetDetailURL, t.APIKey, strconv.FormatUint(series.ID, 10)))
 
 	if err != nil {
 		return
@@ -174,90 +261,9 @@ func (series *Series) GetDetail() (err error) {
 	return
 }
 
-// GetSeries gets a list of TV series by name, by performing a simple search.
-func GetSeries(name string) (seriesList SeriesList, err error) {
-	response, err := http.Get(fmt.Sprintf(GetSeriesURL, url.QueryEscape(name)))
-
-	if err != nil {
-		return
-	}
-
-	data, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		return
-	}
-
-	err = xml.Unmarshal(data, &seriesList)
-
-	return
-}
-
-// GetSeriesByID gets a TV series by ID.
-func GetSeriesByID(id uint64) (series *Series, err error) {
-	response, err := http.Get(fmt.Sprintf(GetSeriesByIDURL, APIKey, id))
-
-	if err != nil {
-		return
-	}
-
-	data, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		return
-	}
-
-	seriesList := SeriesList{}
-
-	if err = xml.Unmarshal(data, &seriesList); err != nil {
-		return
-	}
-
-	if len(seriesList.Series) != 1 {
-		err = errors.New("incorrect number of series")
-
-		return
-	}
-
-	series = seriesList.Series[0]
-
-	return
-}
-
-// GetSeriesByIMDBID gets series from IMDb's ID.
-func GetSeriesByIMDBID(id string) (series *Series, err error) {
-	response, err := http.Get(fmt.Sprintf(GetSeriesByIMDBIDURL, id))
-
-	if err != nil {
-		return
-	}
-
-	data, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		return
-	}
-
-	seriesList := SeriesList{}
-
-	if err = xml.Unmarshal(data, &seriesList); err != nil {
-		return
-	}
-
-	if len(seriesList.Series) != 1 {
-		err = errors.New("incorrect number of series")
-
-		return
-	}
-
-	series = seriesList.Series[0]
-
-	return
-}
-
 // SearchSeries searches for TV shows by name, using the more sophisticated
 // search on TheTVDB's homepage. This is the recommended search method.
-func SearchSeries(name string, maxResults int) (seriesList SeriesList, err error) {
+func (t *TVDB) SearchSeries(name string, maxResults int) (seriesList SeriesList, err error) {
 	response, err := http.Get(fmt.Sprintf(SearchSeriesURL, url.QueryEscape(name)))
 
 	if err != nil {
@@ -286,7 +292,7 @@ func SearchSeries(name string, maxResults int) (seriesList SeriesList, err error
 			return
 		}
 
-		series, err = GetSeriesByID(seriesID)
+		series, err = t.GetSeriesByID(seriesID)
 
 		if err != nil {
 			// Some series can't be found, so we will ignore these.
