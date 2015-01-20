@@ -12,29 +12,6 @@ import (
 	"strings"
 )
 
-const (
-	// GetSeriesURL is used to get basic series information by name.
-	GetSeriesURL = "http://thetvdb.com/api/GetSeries.php?seriesname=%v"
-
-	// GetSeriesByIDURL is used to get basic series information by ID.
-	GetSeriesByIDURL = "http://thetvdb.com/api/%v/series/%v/en.xml"
-
-	// GetSeriesByIMDBIDURL is used to get basic series information by IMDb ID.
-	GetSeriesByIMDBIDURL = "http://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%v"
-
-	// GetDetailURL is used to get detailed series/episode information by ID.
-	GetDetailURL = "http://thetvdb.com/api/%v/series/%v/all/en.xml"
-
-	// SearchSeriesURL is used for series web searches.
-	SearchSeriesURL = "http://thetvdb.com/?string=%v&searchseriesid=&tab=listseries&function=Search"
-
-	// SearchSeriesRegexPattern is used for series web search matching.
-	SearchSeriesRegexPattern = `(?P<before><a href="/\?tab=series&amp;id=)(?P<seriesId>\d+)(?P<after>\&amp;lid=\d*">)`
-)
-
-// SearchSeriesRegex is used for series web search matching.
-var SearchSeriesRegex = regexp.MustCompile(SearchSeriesRegexPattern)
-
 // PipeList type representing pipe-separated string values.
 type PipeList []string
 
@@ -134,7 +111,8 @@ func NewTVDB(apiKey string) *TVDB {
 
 // GetSeries gets a list of TV series by name, by performing a simple search.
 func (t *TVDB) GetSeries(name string) (seriesList SeriesList, err error) {
-	response, err := http.Get(fmt.Sprintf(GetSeriesURL, url.QueryEscape(name)))
+	url := fmt.Sprintf("http://thetvdb.com/api/GetSeries.php?seriesname=%v", url.QueryEscape(name))
+	response, err := http.Get(url)
 	if err != nil {
 		return
 	}
@@ -150,7 +128,8 @@ func (t *TVDB) GetSeries(name string) (seriesList SeriesList, err error) {
 
 // GetSeriesByID gets a TV series by ID.
 func (t *TVDB) GetSeriesByID(id uint64) (series *Series, err error) {
-	response, err := http.Get(fmt.Sprintf(GetSeriesByIDURL, t.APIKey, id))
+	url := fmt.Sprintf("http://thetvdb.com/api/%v/series/%v/en.xml", t.APIKey, id)
+	response, err := http.Get(url)
 	if err != nil {
 		return
 	}
@@ -176,7 +155,8 @@ func (t *TVDB) GetSeriesByID(id uint64) (series *Series, err error) {
 
 // GetSeriesByIMDBID gets series from IMDb's ID.
 func (t *TVDB) GetSeriesByIMDBID(id string) (series *Series, err error) {
-	response, err := http.Get(fmt.Sprintf(GetSeriesByIMDBIDURL, id))
+	url := fmt.Sprintf("http://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%v", id)
+	response, err := http.Get(url)
 	if err != nil {
 		return
 	}
@@ -212,7 +192,8 @@ func (t *TVDB) GetSeriesListDetail(seriesList *SeriesList) (err error) {
 
 // GetDetail gets more detail for a TV show, including information on it's episodes.
 func (t *TVDB) GetSeriesDetail(series *Series) (err error) {
-	response, err := http.Get(fmt.Sprintf(GetDetailURL, t.APIKey, strconv.FormatUint(series.ID, 10)))
+	url := fmt.Sprintf("http://thetvdb.com/api/%v/series/%v/all/en.xml", t.APIKey, strconv.FormatUint(series.ID, 10))
+	response, err := http.Get(url)
 	if err != nil {
 		return
 	}
@@ -241,10 +222,14 @@ func (t *TVDB) GetSeriesDetail(series *Series) (err error) {
 	return
 }
 
+var reSearchSeries = regexp.MustCompile(`(?P<before><a href="/\?tab=series&amp;id=)(?P<seriesId>\d+)(?P<after>\&amp;lid=\d*">)`)
+
 // SearchSeries searches for TV shows by name, using the more sophisticated
 // search on TheTVDB's homepage. This is the recommended search method.
 func (t *TVDB) SearchSeries(name string, maxResults int) (seriesList SeriesList, err error) {
-	response, err := http.Get(fmt.Sprintf(SearchSeriesURL, url.QueryEscape(name)))
+	url := fmt.Sprintf("http://thetvdb.com/?string=%v&searchseriesid=&tab=listseries&function=Search",
+		url.QueryEscape(name))
+	response, err := http.Get(url)
 	if err != nil {
 		return
 	}
@@ -254,7 +239,7 @@ func (t *TVDB) SearchSeries(name string, maxResults int) (seriesList SeriesList,
 		return
 	}
 
-	groups := SearchSeriesRegex.FindAllSubmatch(buf, -1)
+	groups := reSearchSeries.FindAllSubmatch(buf, -1)
 	doneSeriesIDs := make(map[uint64]struct{})
 
 	for _, group := range groups {
