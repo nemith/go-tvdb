@@ -1,10 +1,9 @@
 package tvdb
 
 import (
+	"bytes"
 	"encoding/xml"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,14 +15,14 @@ import (
 type PipeList []string
 
 // UnmarshalXML unmarshals an XML element with string value into a pip-separated list of strings.
-func (pipeList *PipeList) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) (err error) {
+func (pipeList *PipeList) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
 	content := ""
-	if err = decoder.DecodeElement(&content, &start); err != nil {
+	if err := decoder.DecodeElement(&content, &start); err != nil {
 		return err
 	}
 
 	*pipeList = strings.Split(strings.Trim(content, "|"), "|")
-	return
+	return nil
 }
 
 // Episode represents a TV show episode on TheTVDB.
@@ -89,14 +88,10 @@ type Series struct {
 	Seasons       map[uint64][]*Episode
 }
 
-// SeriesList represents a list of TV shows, often used for returning search results.
-type SeriesList struct {
-	Series []*Series `xml:"Series"`
-}
-
-// EpisodeList represents a list of TV show episodes.
-type EpisodeList struct {
-	Episodes []*Episode `xml:"Episode"`
+// data is the response back from the server
+type Data struct {
+	Series   []*Series  `xml:"Series,omitempty"`
+	Episodes []*Episode `xml:"Episode,omitempty"`
 }
 
 type TVDB struct {
@@ -109,150 +104,116 @@ func NewTVDB(apiKey string) *TVDB {
 	}
 }
 
+func getResponse(url string) (*Data, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	data := &Data{}
+	d := xml.NewDecoder(resp.Body)
+	if err = d.Decode(data); err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
 // GetSeries gets a list of TV series by name, by performing a simple search.
-func (t *TVDB) GetSeries(name string) (seriesList SeriesList, err error) {
+func (t *TVDB) GetSeries(name string) ([]*Series, error) {
 	url := fmt.Sprintf("http://thetvdb.com/api/GetSeries.php?seriesname=%v", url.QueryEscape(name))
-	response, err := http.Get(url)
+	data, err := getResponse(url)
 	if err != nil {
-		return
+		return nil, err
 	}
-
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
-	}
-
-	err = xml.Unmarshal(data, &seriesList)
-	return
+	return data.Series, nil
 }
 
 // GetSeriesByID gets a TV series by ID.
-func (t *TVDB) GetSeriesByID(id uint64) (series *Series, err error) {
+func (t *TVDB) GetSeriesByID(id uint64) (*Series, error) {
 	url := fmt.Sprintf("http://thetvdb.com/api/%v/series/%v/en.xml", t.APIKey, id)
-	response, err := http.Get(url)
+	data, err := getResponse(url)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
+	if len(data.Series) != 1 {
+		return nil, fmt.Errorf("Got too many series (expected: 1, got: %d)", len(data.Series))
 	}
 
-	seriesList := SeriesList{}
-	if err = xml.Unmarshal(data, &seriesList); err != nil {
-		return
-	}
-
-	if len(seriesList.Series) != 1 {
-		err = errors.New("incorrect number of series")
-		return
-	}
-
-	series = seriesList.Series[0]
-	return
+	return data.Series[0], nil
 }
 
 // GetSeriesByIMDBID gets series from IMDb's ID.
-func (t *TVDB) GetSeriesByIMDBID(id string) (series *Series, err error) {
+func (t *TVDB) GetSeriesByIMDBID(id string) (*Series, error) {
 	url := fmt.Sprintf("http://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%v", id)
-	response, err := http.Get(url)
+	data, err := getResponse(url)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
+	if len(data.Series) != 1 {
+		return nil, fmt.Errorf("Got too many series (expected: 1, got: %d)", len(data.Series))
 	}
 
-	seriesList := SeriesList{}
-	if err = xml.Unmarshal(data, &seriesList); err != nil {
-		return
-	}
-
-	if len(seriesList.Series) != 1 {
-		err = errors.New("incorrect number of series")
-		return
-	}
-
-	series = seriesList.Series[0]
-	return
-}
-
-// GetDetail gets more detail for all TV shows in a list.
-func (t *TVDB) GetSeriesListDetail(seriesList *SeriesList) (err error) {
-	for seriesIndex := range seriesList.Series {
-		if err = t.GetSeriesDetail(seriesList.Series[seriesIndex]); err != nil {
-			return
-		}
-	}
-	return
+	return data.Series[0], nil
 }
 
 // GetDetail gets more detail for a TV show, including information on it's episodes.
-func (t *TVDB) GetSeriesDetail(series *Series) (err error) {
-	url := fmt.Sprintf("http://thetvdb.com/api/%v/series/%v/all/en.xml", t.APIKey, strconv.FormatUint(series.ID, 10))
-	response, err := http.Get(url)
+func (t *TVDB) GetSeriesDetail(seriesID uint64) (*Series, error) {
+	url := fmt.Sprintf("http://thetvdb.com/api/%s/series/%d/all/en.xml", t.APIKey, seriesID)
+	data, err := getResponse(url)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
+	if len(data.Series) != 1 {
+		return nil, fmt.Errorf("Got too many series (expected: 1, got: %d)", len(data.Series))
 	}
 
-	if err = xml.Unmarshal(data, series); err != nil {
-		return
-	}
-
-	episodeList := EpisodeList{}
-	if err = xml.Unmarshal(data, &episodeList); err != nil {
-		return
-	}
-
+	series := data.Series[0]
 	if series.Seasons == nil {
-		series.Seasons = make(map[uint64][]*Episode)
+		series.Seasons = make(map[uint64][]*Episode, len(data.Episodes))
 	}
 
-	for _, episode := range episodeList.Episodes {
+	for _, episode := range data.Episodes {
 		series.Seasons[episode.SeasonNumber] = append(series.Seasons[episode.SeasonNumber], episode)
 	}
-	return
+	return series, nil
 }
 
 var reSearchSeries = regexp.MustCompile(`(?P<before><a href="/\?tab=series&amp;id=)(?P<seriesId>\d+)(?P<after>\&amp;lid=\d*">)`)
 
 // SearchSeries searches for TV shows by name, using the more sophisticated
 // search on TheTVDB's homepage. This is the recommended search method.
-func (t *TVDB) SearchSeries(name string, maxResults int) (seriesList SeriesList, err error) {
+func (t *TVDB) SearchSeries(name string, maxResults int) ([]Series, error) {
 	url := fmt.Sprintf("http://thetvdb.com/?string=%v&searchseriesid=&tab=listseries&function=Search",
 		url.QueryEscape(name))
-	response, err := http.Get(url)
+	resp, err := http.Get(url)
 	if err != nil {
-		return
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	buf := bytes.Buffer{}
+	if _, err := buf.ReadFrom(resp.Body); err != nil {
+		return nil, err
 	}
 
-	buf, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
+	results := reSearchSeries.FindAllStringSubmatch(buf.String(), -1)
+
+	if len(results) < maxResults {
+		maxResults = len(results)
 	}
+	seriesList := make([]Series, maxResults)
 
-	groups := reSearchSeries.FindAllSubmatch(buf, -1)
-	doneSeriesIDs := make(map[uint64]struct{})
-
-	for _, group := range groups {
+	for _, result := range results {
 		seriesID := uint64(0)
 		var series *Series
-		seriesID, err = strconv.ParseUint(string(group[2]), 10, 64)
-
-		if _, ok := doneSeriesIDs[seriesID]; ok {
-			continue
-		}
-
+		seriesID, err = strconv.ParseUint(string(result[2]), 10, 64)
 		if err != nil {
-			return
+			continue
 		}
 
 		series, err = t.GetSeriesByID(seriesID)
@@ -260,19 +221,17 @@ func (t *TVDB) SearchSeries(name string, maxResults int) (seriesList SeriesList,
 			// Some series can't be found, so we will ignore these.
 			if _, ok := err.(*xml.SyntaxError); ok {
 				err = nil
-
 				continue
 			} else {
-				return
+				return seriesList, err
 			}
 		}
 
-		seriesList.Series = append(seriesList.Series, series)
-		doneSeriesIDs[seriesID] = struct{}{}
+		seriesList = append(seriesList, *series)
 
-		if len(seriesList.Series) == maxResults {
+		if len(seriesList) == maxResults {
 			break
 		}
 	}
-	return
+	return seriesList, nil
 }

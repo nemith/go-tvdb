@@ -17,7 +17,7 @@ func TestGetSeries(t *testing.T) {
 		t.Error(err)
 	}
 
-	for _, series := range seriesList.Series {
+	for _, series := range seriesList {
 		if series.SeriesName == "The Simpsons" {
 			return
 		}
@@ -60,7 +60,7 @@ func TestSearchSeries(t *testing.T) {
 		t.Error(err)
 	}
 
-	for _, series := range seriesList.Series {
+	for _, series := range seriesList {
 		if series.SeriesName == "The Simpsons" {
 			return
 		}
@@ -72,7 +72,6 @@ func TestSearchSeries(t *testing.T) {
 // TestSeriesGetDetail tests the Series type's GetDetail function.
 func TestSeriesGetDetail(t *testing.T) {
 	series, err := tvdb.GetSeriesByID(71663)
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -81,33 +80,13 @@ func TestSeriesGetDetail(t *testing.T) {
 		t.Error("series.Seasons should be nil.")
 	}
 
-	tvdb.GetSeriesDetail(series)
-
-	if series.Seasons == nil {
-		t.Error("series.Seasons should not be nil.")
-	}
-}
-
-// TestSeriesListGetDetail tests the SeriesList type's GetDetail function.
-func TestSeriesListGetDetail(t *testing.T) {
-	seriesList, err := tvdb.GetSeries("The Simpsons")
-
+	series, err = tvdb.GetSeriesDetail(series.ID)
 	if err != nil {
 		t.Error(err)
 	}
 
-	for _, series := range seriesList.Series {
-		if series.Seasons != nil {
-			t.Error("series.Seasons should be nil.")
-		}
-	}
-
-	tvdb.GetSeriesListDetail(&seriesList)
-
-	for _, series := range seriesList.Series {
-		if series.Seasons == nil {
-			t.Error("series.Seasons should not be nil.")
-		}
+	if series.Seasons == nil {
+		t.Error("series.Seasons should not be nil.")
 	}
 }
 
