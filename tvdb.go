@@ -14,7 +14,7 @@ import (
 // PipeList type representing pipe-separated string values.
 type PipeList []string
 
-// UnmarshalXML unmarshals an XML element with string value into a pip-separated list of strings.
+// UnmarshalXML unmarshals an XML element with string value into a pipe separated list of strings.
 func (pipeList *PipeList) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
 	content := ""
 	if err := decoder.DecodeElement(&content, &start); err != nil {
@@ -88,10 +88,41 @@ type Series struct {
 	Seasons       map[uint64][]*Episode
 }
 
+// Langage used for TVDB content
 type Language struct {
 	ID   int    `xml:"id"`
 	Abbr string `xml:"abbreviation"`
 	Name string `xml:"name"`
+}
+
+// Rating of a show or episode for both user rating as well as community rating
+type Rating struct {
+	ID              int `xml:"id"`
+	UserRating      int
+	CommunityRating float32
+}
+
+// Hack to combine xml feilds id and seriesid into a single field so we can use it
+// for both series and episodes
+func (r *Rating) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
+	rating := struct {
+		ID              int `xml:"id,omitemptu"`
+		SeriesID        int `xml:"seriesid,omitempty"`
+		UserRating      int
+		CommunityRating float32
+	}{}
+	if err := decoder.DecodeElement(&rating, &start); err != nil {
+		return err
+	}
+	*r = Rating{
+		ID:              rating.ID,
+		UserRating:      rating.UserRating,
+		CommunityRating: rating.CommunityRating,
+	}
+	if rating.SeriesID != 0 {
+		r.ID = rating.SeriesID
+	}
+	return nil
 }
 
 type RemoteService string
@@ -335,9 +366,54 @@ func (t *TVDB) UserFavRemove(accountID string, seriesID int) ([]int, error) {
 	return t.userFav(accountID, "remove", seriesID)
 }
 
-// userRating is a commond function for both UserRatingSeries and
-// UserRatingEpisode since they utilize the same API.
-func (t *TVDB) userRating(accountID, itemType string, itemID, rating int) error {
+type ratingResult struct {
+	SerRatings []*Rating `xml:"Series"`
+	EpRatings  []*Rating `xml:"Episode"`
+}
+
+func (t *TVDB) getRatingsForUser(accountID string, seriesID int) (*ratingResult, error) {
+	query := url.Values{}
+
+	query.Set("apikey", t.APIKey) //Love the consistency of this API
+	query.Set("accountid", accountID)
+	if seriesID != 0 {
+		query.Set("seriesid", strconv.FormatInt(int64(seriesID), 10))
+	}
+	u := t.apiURL("GetRatingsForUser.php", query)
+	result := &ratingResult{}
+	if err := getResponse(u.String(), result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetRatingsForUser will get all series raiting for user as well as the
+// community ratings
+func (t *TVDB) GetRatingsForUser(accountID string) ([]*Rating, error) {
+	result, err := t.getRatingsForUser(accountID, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.SerRatings, nil
+}
+
+// GetRatingsForUserSeries will return the user and community ratings for a
+// series as well as all the episodes.  Returns the Series ratings first and
+// then a slice of episode ratings.
+func (t *TVDB) GetRaitingsForUserSeries(accountID string, seriesID int) (*Rating, []*Rating, error) {
+	result, err := t.getRatingsForUser(accountID, seriesID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return result.SerRatings[0], result.EpRatings, nil
+}
+
+// setUserRating is a commond function for both SetUserRatingSeries and
+// SetUserRatingEpisode since they utilize the same API.
+func (t *TVDB) setUserRating(accountID, itemType string, itemID, rating int) error {
 	if rating < 0 || rating > 10 {
 		return fmt.Errorf("Rating must be between 0 and 10 inclusive")
 	}
@@ -351,20 +427,20 @@ func (t *TVDB) userRating(accountID, itemType string, itemID, rating int) error 
 
 	// Result is the site rating for some reason.  The API on this site is wack
 	result := &struct{}{}
-	if err := getResponse(u.String(), &result); err != nil {
+	if err := getResponse(u.String(), result); err != nil {
 		return err
 	}
 	return nil
 }
 
 // UserRatingSeries will update the user rating for the series bu the series id.
-func (t *TVDB) UserRatingSeries(accountID string, seriesID, rating int) error {
-	return t.userRating(accountID, "series", seriesID, rating)
+func (t *TVDB) SetUserRatingSeries(accountID string, seriesID, rating int) error {
+	return t.setUserRating(accountID, "series", seriesID, rating)
 }
 
 // UserRatingEp will update the user ratiing for the episode by episode id.
-func (t *TVDB) UserRatingEp(accountID string, epID, rating int) error {
-	return t.userRating(accountID, "episode", epID, rating)
+func (t *TVDB) SetUserRatingEp(accountID string, epID, rating int) error {
+	return t.setUserRating(accountID, "episode", epID, rating)
 }
 
 // UserLang will return the prefered language for a user with a given account

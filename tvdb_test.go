@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	apiKey       = "DECE3B6B5464C552"
+	apiKey       = "90D7DF3AE9E4841E"
 	testUser     = "34A8615ABE815874"
 	simpsonsID   = 71663
 	simpsonsIMDB = "tt0096697"
@@ -135,10 +135,33 @@ func TestUserFavAddRemove(t *testing.T) {
 	}
 }
 
-func TestUserRatingSeries(t *testing.T) {
+func TestGetRatingsForUser(t *testing.T) {
+	t.Logf("Getting ratings for user '%s'", testUser)
+	ratings, err := tvdb.GetRatingsForUser(testUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(ratings) < 1 {
+		t.Errorf("Expected at least one rating")
+	} else {
+		rating := ratings[0]
+
+		if rating.ID <= 0 {
+			t.Errorf("Expected non-zero seriesID")
+		}
+
+		if rating.CommunityRating <= 0 {
+			t.Errorf("Expected a non-zero Community rating")
+		}
+	}
+
+}
+
+func TestSetUserRatingSeries(t *testing.T) {
 	rating := 7
 	t.Logf("Setting rating for user '%s' and for series id '%d' to '%d'", testUser, simpsonsID, rating)
-	if err := tvdb.UserRatingSeries(testUser, simpsonsID, rating); err != nil {
+	if err := tvdb.SetUserRatingSeries(testUser, simpsonsID, rating); err != nil {
 		t.Fatal(err)
 	}
 }
