@@ -34,14 +34,14 @@ func TestGetSeries(t *testing.T) {
 
 // TestGetSeriesByID tests the GetSeriesByID function.
 func TestGetSeriesByID(t *testing.T) {
-	series, err := tvdb.GetSeriesByID(71663)
+	series, err := tvdb.GetSeriesByID(simpsonsID)
 
 	if err != nil {
 		t.Error(err)
 	}
 
 	if series.SeriesName != "The Simpsons" {
-		t.Error("ID lookup for '71663' failed.")
+		t.Error("ID lookup for 'simpsonsID' failed.")
 	}
 }
 
@@ -86,7 +86,7 @@ func seriesIDExists(favs []int, seriesID int) bool {
 
 // TestSeriesGetDetail tests the Series type's GetDetail function.
 func TestGetSeriesFull(t *testing.T) {
-	series, err := tvdb.GetSeriesFull(71663)
+	series, err := tvdb.GetSeriesFull(simpsonsID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -103,8 +103,8 @@ func TestUserFav(t *testing.T) {
 		t.Error(err)
 	}
 
-	if !seriesIDExists(favs, 71664) {
-		t.Errorf("Expected to find seriesID '%d' got %s", 71663, favs)
+	if !seriesIDExists(favs, simpsonsID) {
+		t.Errorf("Expected to find seriesID '%d' got %s", simpsonsID, favs)
 	}
 }
 
