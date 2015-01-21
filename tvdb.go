@@ -148,7 +148,8 @@ func (t *TVDB) staticAPIURL(path string) *url.URL {
 	return url
 }
 
-// GetSeries gets a list of TV series by name, by performing a simple search.
+// GetSeries queries for a series by the series name. Returns a list of matches
+// See http://thetvdb.com/wiki/index.php?title=API:GetSeries for more information
 func (t *TVDB) GetSeries(name string) ([]*Series, error) {
 	u := t.apiURL("GetSeries.php", url.Values{
 		"seriesname": []string{name},
@@ -160,7 +161,8 @@ func (t *TVDB) GetSeries(name string) ([]*Series, error) {
 	return data.Series, nil
 }
 
-// GetSeriesByID gets a TV series by ID.
+// GetSeriesByID grabs the static Base Series Record file by the TVDB series id.
+// See http://thetvdb.com/wiki/index.php?title=API:Base_Series_Record
 func (t *TVDB) GetSeriesByID(id uint64) (*Series, error) {
 	u := t.staticAPIURL(fmt.Sprintf("series/%d/en.xml", id))
 	data, err := getResponse(u.String())
@@ -175,7 +177,10 @@ func (t *TVDB) GetSeriesByID(id uint64) (*Series, error) {
 	return data.Series[0], nil
 }
 
-// GetSeriesByIMDBID gets series from IMDb's ID.
+// GetSeriesByRemoteID queries the tvdb database for a series based on a remote
+// id.  The RemoteID is the identifier used by a remote system like IMDB or
+// Zap2it.
+// See: http://thetvdb.com/wiki/index.php?title=API:GetSeriesByRemoteID
 func (t *TVDB) GetSeriesByRemoteID(service RemoteService, id string) (*Series, error) {
 	query := url.Values{}
 	query.Set(string(service), id)
@@ -192,8 +197,10 @@ func (t *TVDB) GetSeriesByRemoteID(service RemoteService, id string) (*Series, e
 	return data.Series[0], nil
 }
 
-// GetDetail gets more detail for a TV show, including information on it's episodes.
-func (t *TVDB) GetSeriesDetail(seriesID uint64) (*Series, error) {
+// GetSeriesFull grabs the static Full Series Record for the series by the
+// series id.
+// See: http://thetvdb.com/wiki/index.php?title=API:Full_Series_Record
+func (t *TVDB) GetSeriesFull(seriesID uint64) (*Series, error) {
 	u := t.staticAPIURL(fmt.Sprintf("series/%d/all/en.xml", seriesID))
 	data, err := getResponse(u.String())
 	if err != nil {
@@ -217,8 +224,8 @@ func (t *TVDB) GetSeriesDetail(seriesID uint64) (*Series, error) {
 
 var reSearchSeries = regexp.MustCompile(`(?P<before><a href="/\?tab=series&amp;id=)(?P<seriesId>\d+)(?P<after>\&amp;lid=\d*">)`)
 
-// SearchSeries searches for TV shows by name, using the more sophisticated
-// search on TheTVDB's homepage. This is the recommended search method.
+// SearchSeries searches for TV series by name, using the user based search
+// found on TVDB's homepage.
 func (t *TVDB) SearchSeries(name string, maxResults int) ([]Series, error) {
 	u := t.baseURL()
 	query := url.Values{

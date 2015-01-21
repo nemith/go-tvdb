@@ -1,8 +1,6 @@
-go-tvdb
+tvdb
 =======
 
-[![Build Status](https://travis-ci.org/garfunkel/go-tvdb.svg?branch=master)](https://travis-ci.org/garfunkel/go-tvdb)
+Golang module for interfacing with tvdbs API.  Based on https://github.com/garfunkel/go-tvdb with some breaking API changes.  Not backwards compatable!
 
-Simple, sexy and easy golang module for TheTVDB.
-
-[API Documentation](http://godoc.org/github.com/garfunkel/go-tvdb)
+[API Documentation](http://godoc.org/github.com/nemith/tvdb)
