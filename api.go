@@ -163,7 +163,7 @@ func getResponse(url string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Failed request for '%s' got code '%d'", url, resp.StatusCode)
 	}
 	defer resp.Body.Close()
