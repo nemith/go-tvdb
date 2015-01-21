@@ -143,6 +143,22 @@ func TestUserRatingSeries(t *testing.T) {
 	}
 }
 
+func TestUserLang(t *testing.T) {
+	t.Logf("Getting prefered language for user '%s'", testUser)
+	lang, err := tvdb.UserLang(testUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if lang.Abbr != "en" {
+		t.Errorf("Expected language abbr of '%s' got '%s'", "en", lang.Abbr)
+	}
+
+	if lang.Name != "English" {
+		t.Errorf("Expected language name of '%s' got '%s'", "English", lang.Name)
+	}
+}
+
 func TestMain(m *testing.M) {
 	tvdb = NewTVDB(apiKey)
 	os.Exit(m.Run())

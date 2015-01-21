@@ -88,6 +88,12 @@ type Series struct {
 	Seasons       map[uint64][]*Episode
 }
 
+type Language struct {
+	ID   int    `xml:"id"`
+	Abbr string `xml:"abbreviation"`
+	Name string `xml:"name"`
+}
+
 type RemoteService string
 
 const (
@@ -359,4 +365,21 @@ func (t *TVDB) UserRatingSeries(accountID string, seriesID, rating int) error {
 // UserRatingEp will update the user ratiing for the episode by episode id.
 func (t *TVDB) UserRatingEp(accountID string, epID, rating int) error {
 	return t.userRating(accountID, "episode", epID, rating)
+}
+
+// UserLang will return the prefered language for a user with a given account
+// id.
+func (t *TVDB) UserLang(accountID string) (*Language, error) {
+	u := t.apiURL("User_PreferredLanguage.php", url.Values{
+		"accountid": []string{accountID},
+	})
+
+	resp := &struct {
+		Lang Language `xml:"Language"`
+	}{}
+	if err := getResponse(u.String(), resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.Lang, nil
 }
