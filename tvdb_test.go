@@ -39,9 +39,9 @@ func TestGetSeriesByID(t *testing.T) {
 	}
 }
 
-// TestGetSeriesByIMDBID tests the GetSeriesByIMDBID function.
-func TestGetSeriesByIMDBID(t *testing.T) {
-	series, err := tvdb.GetSeriesByIMDBID("tt0096697")
+// TestGetSeriesByRemoteID tests the GetSeriesByRemoteID function.
+func TestGetSeriesByRemoteID(t *testing.T) {
+	series, err := tvdb.GetSeriesByRemoteID(IMDB, "tt0096697")
 
 	if err != nil {
 		t.Error(err)

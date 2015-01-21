@@ -88,6 +88,13 @@ type Series struct {
 	Seasons       map[uint64][]*Episode
 }
 
+type RemoteService string
+
+const (
+	IMDB   = RemoteService("imdbid")
+	Zap2it = RemoteService("zap2it")
+)
+
 // data is the response back from the server
 type Data struct {
 	Series   []*Series  `xml:"Series,omitempty"`
@@ -96,6 +103,7 @@ type Data struct {
 
 type TVDB struct {
 	APIKey string
+	//defaultLang string
 }
 
 func NewTVDB(apiKey string) *TVDB {
@@ -120,10 +128,32 @@ func getResponse(url string) (*Data, error) {
 	return data, nil
 }
 
+func (t *TVDB) baseURL() *url.URL {
+	return &url.URL{
+		Scheme: "http",
+		Host:   "thetvdb.com",
+	}
+}
+
+func (t *TVDB) apiURL(path string, query url.Values) *url.URL {
+	url := t.baseURL()
+	url.Path = fmt.Sprintf("api/%s", path)
+	url.RawQuery = query.Encode()
+	return url
+}
+
+func (t *TVDB) staticAPIURL(path string) *url.URL {
+	url := t.baseURL()
+	url.Path = fmt.Sprintf("api/%s/%s", t.APIKey, path)
+	return url
+}
+
 // GetSeries gets a list of TV series by name, by performing a simple search.
 func (t *TVDB) GetSeries(name string) ([]*Series, error) {
-	url := fmt.Sprintf("http://thetvdb.com/api/GetSeries.php?seriesname=%v", url.QueryEscape(name))
-	data, err := getResponse(url)
+	u := t.apiURL("GetSeries.php", url.Values{
+		"seriesname": []string{name},
+	})
+	data, err := getResponse(u.String())
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +162,8 @@ func (t *TVDB) GetSeries(name string) ([]*Series, error) {
 
 // GetSeriesByID gets a TV series by ID.
 func (t *TVDB) GetSeriesByID(id uint64) (*Series, error) {
-	url := fmt.Sprintf("http://thetvdb.com/api/%v/series/%v/en.xml", t.APIKey, id)
-	data, err := getResponse(url)
+	u := t.staticAPIURL(fmt.Sprintf("series/%d/en.xml", id))
+	data, err := getResponse(u.String())
 	if err != nil {
 		return nil, err
 	}
@@ -146,9 +176,11 @@ func (t *TVDB) GetSeriesByID(id uint64) (*Series, error) {
 }
 
 // GetSeriesByIMDBID gets series from IMDb's ID.
-func (t *TVDB) GetSeriesByIMDBID(id string) (*Series, error) {
-	url := fmt.Sprintf("http://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%v", id)
-	data, err := getResponse(url)
+func (t *TVDB) GetSeriesByRemoteID(service RemoteService, id string) (*Series, error) {
+	query := url.Values{}
+	query.Set(string(service), id)
+	u := t.apiURL("GetSeriesByRemoteID.php", query)
+	data, err := getResponse(u.String())
 	if err != nil {
 		return nil, err
 	}
@@ -162,8 +194,8 @@ func (t *TVDB) GetSeriesByIMDBID(id string) (*Series, error) {
 
 // GetDetail gets more detail for a TV show, including information on it's episodes.
 func (t *TVDB) GetSeriesDetail(seriesID uint64) (*Series, error) {
-	url := fmt.Sprintf("http://thetvdb.com/api/%s/series/%d/all/en.xml", t.APIKey, seriesID)
-	data, err := getResponse(url)
+	u := t.staticAPIURL(fmt.Sprintf("series/%d/all/en.xml", seriesID))
+	data, err := getResponse(u.String())
 	if err != nil {
 		return nil, err
 	}
@@ -188,9 +220,15 @@ var reSearchSeries = regexp.MustCompile(`(?P<before><a href="/\?tab=series&amp;i
 // SearchSeries searches for TV shows by name, using the more sophisticated
 // search on TheTVDB's homepage. This is the recommended search method.
 func (t *TVDB) SearchSeries(name string, maxResults int) ([]Series, error) {
-	url := fmt.Sprintf("http://thetvdb.com/?string=%v&searchseriesid=&tab=listseries&function=Search",
-		url.QueryEscape(name))
-	resp, err := http.Get(url)
+	u := t.baseURL()
+	query := url.Values{
+		"string":         []string{name},
+		"searchseriesid": []string{""},
+		"tab":            []string{"listseries"},
+		"function":       []string{"Search"},
+	}
+	u.RawQuery = query.Encode()
+	resp, err := http.Get(u.String())
 	if err != nil {
 		return nil, err
 	}
