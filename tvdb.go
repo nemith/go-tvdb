@@ -102,30 +102,30 @@ type Data struct {
 }
 
 type TVDB struct {
-	APIKey string
-	//defaultLang string
+	APIKey      string
+	DefaultLang string
 }
 
 func NewTVDB(apiKey string) *TVDB {
 	return &TVDB{
-		APIKey: apiKey,
+		APIKey:      apiKey,
+		DefaultLang: "en",
 	}
 }
 
-func getResponse(url string) (*Data, error) {
+func getResponse(url string, v interface{}) error {
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 
-	data := &Data{}
 	d := xml.NewDecoder(resp.Body)
-	if err = d.Decode(data); err != nil {
-		return nil, err
+	if err = d.Decode(v); err != nil {
+		return err
 	}
 
-	return data, nil
+	return nil
 }
 
 func (t *TVDB) baseURL() *url.URL {
@@ -154,8 +154,8 @@ func (t *TVDB) GetSeries(name string) ([]*Series, error) {
 	u := t.apiURL("GetSeries.php", url.Values{
 		"seriesname": []string{name},
 	})
-	data, err := getResponse(u.String())
-	if err != nil {
+	data := &Data{}
+	if err := getResponse(u.String(), data); err != nil {
 		return nil, err
 	}
 	return data.Series, nil
@@ -165,8 +165,8 @@ func (t *TVDB) GetSeries(name string) ([]*Series, error) {
 // See http://thetvdb.com/wiki/index.php?title=API:Base_Series_Record
 func (t *TVDB) GetSeriesByID(id uint64) (*Series, error) {
 	u := t.staticAPIURL(fmt.Sprintf("series/%d/en.xml", id))
-	data, err := getResponse(u.String())
-	if err != nil {
+	data := &Data{}
+	if err := getResponse(u.String(), data); err != nil {
 		return nil, err
 	}
 
@@ -185,8 +185,8 @@ func (t *TVDB) GetSeriesByRemoteID(service RemoteService, id string) (*Series, e
 	query := url.Values{}
 	query.Set(string(service), id)
 	u := t.apiURL("GetSeriesByRemoteID.php", query)
-	data, err := getResponse(u.String())
-	if err != nil {
+	data := &Data{}
+	if err := getResponse(u.String(), data); err != nil {
 		return nil, err
 	}
 
@@ -202,8 +202,8 @@ func (t *TVDB) GetSeriesByRemoteID(service RemoteService, id string) (*Series, e
 // See: http://thetvdb.com/wiki/index.php?title=API:Full_Series_Record
 func (t *TVDB) GetSeriesFull(seriesID uint64) (*Series, error) {
 	u := t.staticAPIURL(fmt.Sprintf("series/%d/all/en.xml", seriesID))
-	data, err := getResponse(u.String())
-	if err != nil {
+	data := &Data{}
+	if err := getResponse(u.String(), data); err != nil {
 		return nil, err
 	}
 
@@ -279,4 +279,49 @@ func (t *TVDB) SearchSeries(name string, maxResults int) ([]Series, error) {
 		}
 	}
 	return seriesList, nil
+}
+
+// userFav is the internal function for UserFav, UserFavAdd, and UserFavRemove
+// since they all use the same API.
+func (t *TVDB) userFav(accountID, actionType string, seriesID int) ([]int, error) {
+	query := url.Values{}
+	query.Set("accountid", accountID)
+
+	if actionType != "" {
+		query.Set("type", actionType)
+		query.Set("seriesid", strconv.FormatInt(int64(seriesID), 10))
+	}
+
+	u := t.apiURL("User_Favorites.php", query)
+
+	data := &struct {
+		XMLName xml.Name `xml:"Favorites"`
+		Series  []int
+	}{}
+
+	if err := getResponse(u.String(), data); err != nil {
+		return nil, err
+	}
+	return data.Series, nil
+}
+
+// UserFav queries TVDB's database for favorites for a given accound id. Please
+// note this is the accountID and not the username of the account.  Users can
+// find thier account id from thier account page
+// (http://thetvdb.com/?tab=userinfo).
+// Returns a slice of series ids
+func (t *TVDB) UserFav(accountID string) ([]int, error) {
+	return t.userFav(accountID, "", 0)
+}
+
+// UserFavAdd will add a series by series id to a users account.  See UserFav
+// for information on account id. Returns the modified list
+func (t *TVDB) UserFavAdd(accountID string, seriesID int) ([]int, error) {
+	return t.userFav(accountID, "add", seriesID)
+}
+
+// UserFavRemove will delete a series by series id to a users account.  See
+// UserFav for information on account id. Returns the modified list
+func (t *TVDB) UserFavRemove(accountID string, seriesID int) ([]int, error) {
+	return t.userFav(accountID, "remove", seriesID)
 }

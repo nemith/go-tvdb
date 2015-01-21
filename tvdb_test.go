@@ -3,9 +3,15 @@ package tvdb
 import (
 	"os"
 	"testing"
+	"time"
 )
 
-const APIKey = "DECE3B6B5464C552"
+const (
+	apiKey     = "DECE3B6B5464C552"
+	testUser   = "34A8615ABE815874"
+	simpsonsID = 71663
+	futuramaID = 73871
+)
 
 var tvdb *TVDB
 
@@ -69,18 +75,18 @@ func TestSearchSeries(t *testing.T) {
 	t.Error("No 'The Simpsons' title could be found.")
 }
 
+func seriesIDExists(favs []int, seriesID int) bool {
+	for _, fav := range favs {
+		if fav == seriesID {
+			return true
+		}
+	}
+	return false
+}
+
 // TestSeriesGetDetail tests the Series type's GetDetail function.
-func TestSeriesGetDetail(t *testing.T) {
-	series, err := tvdb.GetSeriesByID(71663)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if series.Seasons != nil {
-		t.Error("series.Seasons should be nil.")
-	}
-
-	series, err = tvdb.GetSeriesDetail(series.ID)
+func TestGetSeriesFull(t *testing.T) {
+	series, err := tvdb.GetSeriesFull(71663)
 	if err != nil {
 		t.Error(err)
 	}
@@ -90,7 +96,40 @@ func TestSeriesGetDetail(t *testing.T) {
 	}
 }
 
+func TestUserFav(t *testing.T) {
+	// Test user with one favorite
+	favs, err := tvdb.UserFav("34A8615ABE815874")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !seriesIDExists(favs, 71664) {
+		t.Errorf("Expected to find seriesID '%d' got %s", 71663, favs)
+	}
+}
+
+func TestUserFavAddRemove(t *testing.T) {
+	t.Logf("Adding series '%d to user '%s' favorites", futuramaID, testUser)
+	favs, err := tvdb.UserFavAdd(testUser, futuramaID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !seriesIDExists(favs, futuramaID) {
+		t.Errorf("Expected to find seriesID '%d' got %s", futuramaID, favs)
+	}
+	time.Sleep(1 * time.Second)
+	t.Logf("Removing series '%d' from user '%s' favorites", futuramaID, testUser)
+	favs, err = tvdb.UserFavRemove(testUser, futuramaID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seriesIDExists(favs, futuramaID) {
+		t.Errorf("Expected to NOT find seriesID '%d got %s", futuramaID, favs)
+	}
+}
+
 func TestMain(m *testing.M) {
-	tvdb = NewTVDB(APIKey)
+	tvdb = NewTVDB(apiKey)
 	os.Exit(m.Run())
 }
