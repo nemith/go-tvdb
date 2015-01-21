@@ -118,6 +118,9 @@ func getResponse(url string, v interface{}) error {
 	if err != nil {
 		return err
 	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Failed request for '%s' got code '%d'", url, resp.StatusCode)
+	}
 	defer resp.Body.Close()
 
 	d := xml.NewDecoder(resp.Body)
@@ -324,4 +327,36 @@ func (t *TVDB) UserFavAdd(accountID string, seriesID int) ([]int, error) {
 // UserFav for information on account id. Returns the modified list
 func (t *TVDB) UserFavRemove(accountID string, seriesID int) ([]int, error) {
 	return t.userFav(accountID, "remove", seriesID)
+}
+
+// userRating is a commond function for both UserRatingSeries and
+// UserRatingEpisode since they utilize the same API.
+func (t *TVDB) userRating(accountID, itemType string, itemID, rating int) error {
+	if rating < 0 || rating > 10 {
+		return fmt.Errorf("Rating must be between 0 and 10 inclusive")
+	}
+
+	query := url.Values{}
+	query.Set("accountid", accountID)
+	query.Set("itemtype", itemType)
+	query.Set("itemid", strconv.FormatInt(int64(itemID), 10))
+	query.Set("rating", strconv.FormatInt(int64(rating), 10))
+	u := t.apiURL("User_Rating.php", query)
+
+	// Result is the site rating for some reason.  The API on this site is wack
+	result := &struct{}{}
+	if err := getResponse(u.String(), &result); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UserRatingSeries will update the user rating for the series bu the series id.
+func (t *TVDB) UserRatingSeries(accountID string, seriesID, rating int) error {
+	return t.userRating(accountID, "series", seriesID, rating)
+}
+
+// UserRatingEp will update the user ratiing for the episode by episode id.
+func (t *TVDB) UserRatingEp(accountID string, epID, rating int) error {
+	return t.userRating(accountID, "episode", epID, rating)
 }

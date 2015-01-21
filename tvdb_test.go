@@ -135,6 +135,14 @@ func TestUserFavAddRemove(t *testing.T) {
 	}
 }
 
+func TestUserRatingSeries(t *testing.T) {
+	rating := 7
+	t.Logf("Setting rating for user '%s' and for series id '%d' to '%d'", testUser, simpsonsID, rating)
+	if err := tvdb.UserRatingSeries(testUser, simpsonsID, rating); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMain(m *testing.M) {
 	tvdb = NewTVDB(apiKey)
 	os.Exit(m.Run())
