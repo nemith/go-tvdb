@@ -140,19 +140,19 @@ const (
 	Zap2it = RemoteService("zap2it")
 )
 
-// TVDBAPI is the low level API for accessing thetvdb.com "api".  Most
-// functions of TVDBAPI should mimic thier counterparts found in the
+// API is the low level API for accessing thetvdb.com "api".  Most
+// functions of API should mimic thier counterparts found in the
 // public API with some fetching and parsing thrown in
-type TVDBAPI struct {
-	APIKey      string
+type API struct {
+	Key         string
 	DefaultLang string
 }
 
-// NewTVDBAPI creates a new TVDBAPI instance with an APIKey.  Language defaults
+// NewAPI creates a new API instance with an api key.  Language defaults
 // to English.
-func NewTVDBAPI(apiKey string) *TVDBAPI {
-	return &TVDBAPI{
-		APIKey:      apiKey,
+func NewAPI(key string) *API {
+	return &API{
+		Key:         key,
 		DefaultLang: "en",
 	}
 }
@@ -177,7 +177,7 @@ func getResponse(url string, v interface{}) error {
 }
 
 // baseURL is used to generate the basic URL for thetvdb.com
-func (t *TVDBAPI) baseURL() *url.URL {
+func (t *API) baseURL() *url.URL {
 	return &url.URL{
 		Scheme: "http",
 		Host:   "thetvdb.com",
@@ -186,7 +186,7 @@ func (t *TVDBAPI) baseURL() *url.URL {
 
 // apiURL buolds on baseURL and provides a quick utility for generating a url
 // to the dyanamic calls to the TVDB API (i.e the PHP scripts)
-func (t *TVDBAPI) apiURL(path string, query url.Values) *url.URL {
+func (t *API) apiURL(path string, query url.Values) *url.URL {
 	url := t.baseURL()
 	url.Path = fmt.Sprintf("api/%s", path)
 	url.RawQuery = query.Encode()
@@ -195,15 +195,15 @@ func (t *TVDBAPI) apiURL(path string, query url.Values) *url.URL {
 
 // staticURL builds on base use and provides a quick utility for generating a
 // url to static parts of the TVDB API (Static zip and xml files)
-func (t *TVDBAPI) staticAPIURL(path string) *url.URL {
+func (t *API) staticAPIURL(path string) *url.URL {
 	url := t.baseURL()
-	url.Path = fmt.Sprintf("api/%s/%s", t.APIKey, path)
+	url.Path = fmt.Sprintf("api/%s/%s", t.Key, path)
 	return url
 }
 
 // GetSeries queries for a series by the series name. Returns a list of matches
 // See http://thetvdb.com/wiki/index.php?title=API:GetSeries for more information
-func (t *TVDBAPI) GetSeries(name string) ([]SeriesSummary, error) {
+func (t *API) GetSeries(name string) ([]SeriesSummary, error) {
 	u := t.apiURL("GetSeries.php", url.Values{
 		"seriesname": []string{name},
 	})
@@ -219,7 +219,7 @@ func (t *TVDBAPI) GetSeries(name string) ([]SeriesSummary, error) {
 
 // GetSeriesByID grabs the static Base Series Record file by the TVDB series id.
 // See http://thetvdb.com/wiki/index.php?title=API:Base_Series_Record
-func (t *TVDBAPI) GetSeriesByID(id int) (*Series, error) {
+func (t *API) GetSeriesByID(id int) (*Series, error) {
 	u := t.staticAPIURL(fmt.Sprintf("series/%d/en.xml", id))
 	response := struct {
 		XMLName xml.Name `xml:"Data"`
@@ -236,7 +236,7 @@ func (t *TVDBAPI) GetSeriesByID(id int) (*Series, error) {
 // id.  The RemoteID is the identifier used by a remote system like IMDB or
 // Zap2it.
 // See: http://thetvdb.com/wiki/index.php?title=API:GetSeriesByRemoteID
-func (t *TVDBAPI) GetSeriesByRemoteID(service RemoteService, id string) (*Series, error) {
+func (t *API) GetSeriesByRemoteID(service RemoteService, id string) (*Series, error) {
 	query := url.Values{}
 	query.Set(string(service), id)
 	u := t.apiURL("GetSeriesByRemoteID.php", query)
@@ -254,7 +254,7 @@ func (t *TVDBAPI) GetSeriesByRemoteID(service RemoteService, id string) (*Series
 // GetSeriesFull grabs the static Full Series Record for the series by the
 // series id.
 // See: http://thetvdb.com/wiki/index.php?title=API:Full_Series_Record
-func (t *TVDBAPI) GetSeriesEp(seriesID int) (*Series, error) {
+func (t *API) GetSeriesEp(seriesID int) (*Series, error) {
 	u := t.staticAPIURL(fmt.Sprintf("series/%d/all/en.xml", seriesID))
 	response := struct {
 		XMLName  xml.Name `xml:"Data"`
@@ -279,7 +279,7 @@ var reSearchSeries = regexp.MustCompile(`<a href="/\?tab=series&amp;id=(\d+)\&am
 
 // SearchSeries searches for TV series by name, using the user based search
 // found on TVDB's homepage.
-func (t *TVDBAPI) SearchSeries(name string) ([]int, error) {
+func (t *API) SearchSeries(name string) ([]int, error) {
 	u := t.baseURL()
 	query := url.Values{
 		"string":         []string{name},
@@ -314,7 +314,7 @@ func (t *TVDBAPI) SearchSeries(name string) ([]int, error) {
 
 // userFav is the internal function for UserFav, UserFavAdd, and UserFavRemove
 // since they all use the same API.
-func (t *TVDBAPI) userFav(accountID, actionType string, seriesID int) ([]int, error) {
+func (t *API) userFav(accountID, actionType string, seriesID int) ([]int, error) {
 	query := url.Values{}
 	query.Set("accountid", accountID)
 
@@ -341,19 +341,19 @@ func (t *TVDBAPI) userFav(accountID, actionType string, seriesID int) ([]int, er
 // find thier account id from thier account page
 // (http://thetvdb.com/?tab=userinfo).
 // Returns a slice of series ids
-func (t *TVDBAPI) UserFav(accountID string) ([]int, error) {
+func (t *API) UserFav(accountID string) ([]int, error) {
 	return t.userFav(accountID, "", 0)
 }
 
 // UserFavAdd will add a series by series id to a users account.  See UserFav
 // for information on account id. Returns the modified list
-func (t *TVDBAPI) UserFavAdd(accountID string, seriesID int) ([]int, error) {
+func (t *API) UserFavAdd(accountID string, seriesID int) ([]int, error) {
 	return t.userFav(accountID, "add", seriesID)
 }
 
 // UserFavRemove will delete a series by series id to a users account.  See
 // UserFav for information on account id. Returns the modified list
-func (t *TVDBAPI) UserFavRemove(accountID string, seriesID int) ([]int, error) {
+func (t *API) UserFavRemove(accountID string, seriesID int) ([]int, error) {
 	return t.userFav(accountID, "remove", seriesID)
 }
 
@@ -362,10 +362,10 @@ type ratingResult struct {
 	EpRatings  []*Rating `xml:"Episode"`
 }
 
-func (t *TVDBAPI) getRatingsForUser(accountID string, seriesID int) (*ratingResult, error) {
+func (t *API) getRatingsForUser(accountID string, seriesID int) (*ratingResult, error) {
 	query := url.Values{}
 
-	query.Set("apikey", t.APIKey) //Love the consistency of this API
+	query.Set("apikey", t.Key) //Love the consistency of this API
 	query.Set("accountid", accountID)
 	if seriesID != 0 {
 		query.Set("seriesid", strconv.FormatInt(int64(seriesID), 10))
@@ -381,7 +381,7 @@ func (t *TVDBAPI) getRatingsForUser(accountID string, seriesID int) (*ratingResu
 
 // GetRatingsForUser will get all series raiting for user as well as the
 // community ratings
-func (t *TVDBAPI) GetRatingsForUser(accountID string) ([]*Rating, error) {
+func (t *API) GetRatingsForUser(accountID string) ([]*Rating, error) {
 	result, err := t.getRatingsForUser(accountID, 0)
 	if err != nil {
 		return nil, err
@@ -393,7 +393,7 @@ func (t *TVDBAPI) GetRatingsForUser(accountID string) ([]*Rating, error) {
 // GetRatingsForUserSeries will return the user and community ratings for a
 // series as well as all the episodes.  Returns the Series ratings first and
 // then a slice of episode ratings.
-func (t *TVDBAPI) GetRaitingsForUserSeries(accountID string, seriesID int) (*Rating, []*Rating, error) {
+func (t *API) GetRaitingsForUserSeries(accountID string, seriesID int) (*Rating, []*Rating, error) {
 	result, err := t.getRatingsForUser(accountID, seriesID)
 	if err != nil {
 		return nil, nil, err
@@ -404,7 +404,7 @@ func (t *TVDBAPI) GetRaitingsForUserSeries(accountID string, seriesID int) (*Rat
 
 // setUserRating is a commond function for both SetUserRatingSeries and
 // SetUserRatingEpisode since they utilize the same API.
-func (t *TVDBAPI) setUserRating(accountID, itemType string, itemID, rating int) error {
+func (t *API) setUserRating(accountID, itemType string, itemID, rating int) error {
 	if rating < 0 || rating > 10 {
 		return fmt.Errorf("Rating must be between 0 and 10 inclusive")
 	}
@@ -425,18 +425,18 @@ func (t *TVDBAPI) setUserRating(accountID, itemType string, itemID, rating int) 
 }
 
 // UserRatingSeries will update the user rating for the series bu the series id.
-func (t *TVDBAPI) SetUserRatingSeries(accountID string, seriesID, rating int) error {
+func (t *API) SetUserRatingSeries(accountID string, seriesID, rating int) error {
 	return t.setUserRating(accountID, "series", seriesID, rating)
 }
 
 // UserRatingEp will update the user ratiing for the episode by episode id.
-func (t *TVDBAPI) SetUserRatingEp(accountID string, epID, rating int) error {
+func (t *API) SetUserRatingEp(accountID string, epID, rating int) error {
 	return t.setUserRating(accountID, "episode", epID, rating)
 }
 
 // UserLang will return the prefered language for a user with a given account
 // id.
-func (t *TVDBAPI) UserLang(accountID string) (*Language, error) {
+func (t *API) UserLang(accountID string) (*Language, error) {
 	u := t.apiURL("User_PreferredLanguage.php", url.Values{
 		"accountid": []string{accountID},
 	})

@@ -15,7 +15,7 @@ const (
 	futuramaID   = 73871
 )
 
-var api *TVDBAPI
+var api *API
 
 // TestGetSeries tests the GetSeries function.
 func TestGetSeries(t *testing.T) {
@@ -183,6 +183,6 @@ func TestUserLang(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	api = NewTVDBAPI(apiKey)
+	api = NewAPI(apiKey)
 	os.Exit(m.Run())
 }
