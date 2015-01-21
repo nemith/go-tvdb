@@ -27,7 +27,7 @@ func TestGetSeries(t *testing.T) {
 	}
 
 	for _, series := range seriesList {
-		if series.SeriesName == simpsonsName {
+		if series.Name == simpsonsName {
 			return
 		}
 	}
@@ -43,9 +43,9 @@ func TestGetSeriesByID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if series.SeriesName != simpsonsName {
+	if series.Name != simpsonsName {
 		t.Errorf("Lookup for ID '%d'. Expected name of '%s' got '%s'",
-			simpsonsID, simpsonsName, series.SeriesName)
+			simpsonsID, simpsonsName, series.Name)
 	}
 }
 
@@ -57,7 +57,7 @@ func TestGetSeriesByRemoteID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if series.SeriesName != simpsonsName {
+	if series.Name != simpsonsName {
 		t.Errorf("Expectted series name of '%s' got '%s' for IMDB ID of '%s' failed.")
 	}
 }
@@ -71,7 +71,7 @@ func TestSearchSeries(t *testing.T) {
 	}
 
 	for _, series := range seriesList {
-		if series.SeriesName == simpsonsName {
+		if series.Name == simpsonsName {
 			return
 		}
 	}
