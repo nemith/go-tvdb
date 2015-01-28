@@ -93,7 +93,6 @@ type Series struct {
 	FanartPath    string   `xml:"fanart"`
 	LastUpdated   string   `xml:"lastupdated"`
 	PostersPath   string   `xml:"posters"`
-	Seasons       map[int][]*Episode
 	seriesShared
 }
 
@@ -143,12 +142,6 @@ const (
 	IMDB   = RemoteService("imdbid")
 	Zap2it = RemoteService("zap2it")
 )
-
-// data is the response back from the server
-type Data struct {
-	Series   []*Series  `xml:"Series,omitempty"`
-	Episodes []*Episode `xml:"Episode,omitempty"`
-}
 
 type TVDB struct {
 	APIKey      string
@@ -202,7 +195,7 @@ func (t *TVDB) staticAPIURL(path string) *url.URL {
 
 // GetSeries queries for a series by the series name. Returns a list of matches
 // See http://thetvdb.com/wiki/index.php?title=API:GetSeries for more information
-func (t *TVDB) GetSeries(name string) ([]SeriesSummary, error) {
+func (t *TVDB) SearchSeries(name string) ([]SeriesSummary, error) {
 	u := t.apiURL("GetSeries.php", url.Values{
 		"seriesname": []string{name},
 	})
@@ -239,16 +232,15 @@ func (t *TVDB) GetSeriesByRemoteID(service RemoteService, id string) (*Series, e
 	query := url.Values{}
 	query.Set(string(service), id)
 	u := t.apiURL("GetSeriesByRemoteID.php", query)
-	data := &Data{}
-	if err := getResponse(u.String(), data); err != nil {
+	response := struct {
+		XMLName xml.Name `xml:"Data"`
+		Series  Series
+	}{}
+	if err := getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
 
-	if len(data.Series) != 1 {
-		return nil, fmt.Errorf("Got too many series (expected: 1, got: %d)", len(data.Series))
-	}
-
-	return data.Series[0], nil
+	return data.Series, nil
 }
 
 // GetSeriesFull grabs the static Full Series Record for the series by the
@@ -256,31 +248,23 @@ func (t *TVDB) GetSeriesByRemoteID(service RemoteService, id string) (*Series, e
 // See: http://thetvdb.com/wiki/index.php?title=API:Full_Series_Record
 func (t *TVDB) GetSeriesFull(seriesID int) (*Series, error) {
 	u := t.staticAPIURL(fmt.Sprintf("series/%d/all/en.xml", seriesID))
-	data := &Data{}
-	if err := getResponse(u.String(), data); err != nil {
+	response := struct {
+		XMLName  xml.Name `xml:"Data"`
+		Series   Series
+		Episodes []Episode
+	}{}
+	if err := getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
 
-	if len(data.Series) != 1 {
-		return nil, fmt.Errorf("Got too many series (expected: 1, got: %d)", len(data.Series))
-	}
-
-	series := data.Series[0]
-	if series.Seasons == nil {
-		series.Seasons = make(map[int][]*Episode, len(data.Episodes))
-	}
-
-	for _, episode := range data.Episodes {
-		series.Seasons[episode.SeasonNumber] = append(series.Seasons[episode.SeasonNumber], episode)
-	}
-	return series, nil
+	return response.Series, nil
 }
 
 var reSearchSeries = regexp.MustCompile(`(?P<before><a href="/\?tab=series&amp;id=)(?P<seriesId>\d+)(?P<after>\&amp;lid=\d*">)`)
 
-// SearchSeries searches for TV series by name, using the user based search
+// SearchSeriesWeb searches for TV series by name, using the user based search
 // found on TVDB's homepage.
-func (t *TVDB) SearchSeries(name string, maxResults int) ([]Series, error) {
+func (t *TVDB) SearchSeriesWeb(name string, maxResults int) ([]Series, error) {
 	u := t.baseURL()
 	query := url.Values{
 		"string":         []string{name},
