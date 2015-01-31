@@ -23,7 +23,7 @@ func (pipeList *PipeList) UnmarshalXML(decoder *xml.Decoder, start xml.StartElem
 	return nil
 }
 
-// Episode represents a TV show episode on TheTVDB.
+// Episode represents a TV show episode on TheClient.
 type Episode struct {
 	ID                    int      `xml:"id"`
 	CombinedEpisodeNumber string   `xml:"Combined_episodenumber"`
@@ -74,7 +74,7 @@ type SeriesSummary struct {
 	seriesShared
 }
 
-// Series represents TV show on TheTVDB.
+// Series represents TV show on TheClient.
 type Series struct {
 	Actors        PipeList `xml:"Actors"`
 	AirsDayOfWeek string   `xml:"Airs_DayOfWeek"`
@@ -94,7 +94,7 @@ type Series struct {
 	seriesShared
 }
 
-// Langage format used for TVDB responses.
+// Langage format used for Client responses.
 type Language struct {
 	ID   int    `xml:"id"`
 	Abbr string `xml:"abbreviation"`
@@ -141,15 +141,20 @@ const (
 	Zap2it = RemoteService("zap2it")
 )
 
-// TVDB is the base of all API calls to thetvdb.com.
-type TVDB struct {
-	APIKey string
+// Client is the base of all API calls to thetvdb.com.
+type Client struct {
+	APIKey  string
+	BaseURL *url.URL
 }
 
-// NewTVDB returns a new TVDB API instance.
-func NewTVDB(apiKey string) *TVDB {
-	return &TVDB{
+// NewClient returns a new Client API instance.:
+func NewClient(apiKey string) *Client {
+	return &Client{
 		APIKey: apiKey,
+		BaseURL: &url.URL{
+			Scheme: "http",
+			Host:   "thetvdb.com",
+		},
 	}
 }
 
@@ -172,34 +177,26 @@ func getResponse(url string, v interface{}) error {
 	return nil
 }
 
-// baseURL returns a very simple base url for the entire site/api
-func (t *TVDB) baseURL() *url.URL {
-	return &url.URL{
-		Scheme: "http",
-		Host:   "thetvdb.com",
-	}
-}
-
 // apiURL returns a base url for the dynamic API with fields already
 // populated.
-func (t *TVDB) apiURL(path string, query url.Values) *url.URL {
-	url := t.baseURL()
-	url.Path = fmt.Sprintf("api/%s", path)
-	url.RawQuery = query.Encode()
-	return url
+func (c *Client) apiURL(path string, query url.Values) *url.URL {
+	u := *c.BaseURL
+	u.Path = fmt.Sprintf("api/%s", path)
+	u.RawQuery = query.Encode()
+	return &u
 }
 
 // staticAPIURL returns a base url for the static API with fields already
 // populated.
-func (t *TVDB) staticAPIURL(path string) *url.URL {
-	url := t.baseURL()
-	url.Path = fmt.Sprintf("api/%s/%s", t.APIKey, path)
-	return url
+func (c *Client) staticAPIURL(path string) *url.URL {
+	u := *c.BaseURL
+	u.Path = fmt.Sprintf("api/%s/%s", c.APIKey, path)
+	return &u
 }
 
-// Lanauges gets a list of lanauges currently supported on TVDB.
-func (t *TVDB) Languages() ([]Language, error) {
-	u := t.staticAPIURL("languages.xml")
+// Lanauges gets a list of lanauges currently supported on Client.
+func (c *Client) Languages() ([]Language, error) {
+	u := c.staticAPIURL("languages.xml")
 	response := struct {
 		XMLName xml.Name   `xml:"Languages"`
 		Langs   []Language `xml:"Language"`
@@ -213,14 +210,14 @@ func (t *TVDB) Languages() ([]Language, error) {
 // SearchSeries queries for a series by the series name. Returns a slice of
 // series summary data.
 // See http://thetvdb.com/wiki/index.php?title=API:GetSeries for more information
-func (t *TVDB) SearchSeries(term, lang string) ([]SeriesSummary, error) {
+func (c *Client) SearchSeries(term, lang string) ([]SeriesSummary, error) {
 	query := url.Values{}
 	query.Set("seriesname", term)
 	if lang != "" {
 		query.Set("language", lang)
 	}
 
-	u := t.apiURL("GetSeries.php", query)
+	u := c.apiURL("GetSeries.php", query)
 
 	response := struct {
 		XMLName xml.Name `xml:"Data"`
@@ -232,12 +229,12 @@ func (t *TVDB) SearchSeries(term, lang string) ([]SeriesSummary, error) {
 	return response.Series, nil
 }
 
-// SeriesByID gets a single series' details from the TVDB series id.
-func (t *TVDB) SeriesByID(id int, lang string) (*Series, error) {
+// SeriesByID gets a single series' details from the Client series id.
+func (c *Client) SeriesByID(id int, lang string) (*Series, error) {
 	if lang == "" {
 		lang = "en"
 	}
-	u := t.staticAPIURL(fmt.Sprintf("series/%d/%s.xml", id, lang))
+	u := c.staticAPIURL(fmt.Sprintf("series/%d/%s.xml", id, lang))
 	response := struct {
 		XMLName xml.Name `xml:"Data"`
 		Series  Series
@@ -252,16 +249,16 @@ func (t *TVDB) SeriesByID(id int, lang string) (*Series, error) {
 // SeriesByRemoteID gets a singles series' details from an identifier from a
 // remote service like IMDB or Zap2it.
 // See: http://thetvdb.com/wiki/index.php?title=API:GetSeriesByRemoteID
-func (t *TVDB) SeriesByRemoteID(service RemoteService, id, lang string) (*Series, error) {
+func (c *Client) SeriesByRemoteID(service RemoteService, id, lang string) (*SeriesSummary, error) {
 	query := url.Values{}
 	query.Set(string(service), id)
 	if lang != "" {
 		query.Set("language", lang)
 	}
-	u := t.apiURL("GetSeriesByRemoteID.php", query)
+	u := c.apiURL("GetSeriesByRemoteID.php", query)
 	response := struct {
 		XMLName xml.Name `xml:"Data"`
-		Series  Series
+		Series  SeriesSummary
 	}{}
 	if err := getResponse(u.String(), &response); err != nil {
 		return nil, err
@@ -270,10 +267,10 @@ func (t *TVDB) SeriesByRemoteID(service RemoteService, id, lang string) (*Series
 	return &response.Series, nil
 }
 
-// SeriesAll gets a single  series with details as well as a list of all the
+// SeriesAllByID gets a single  series with details as well as a list of all the
 // episodes in the series with details.
-func (t *TVDB) SeriesAll(id int, lang string) (*Series, []Episode, error) {
-	u := t.staticAPIURL(fmt.Sprintf("series/%d/all/%s.xml", id, lang))
+func (c *Client) SeriesAllByID(id int, lang string) (*Series, []Episode, error) {
+	u := c.staticAPIURL(fmt.Sprintf("series/%d/all/%s.xml", id, lang))
 	response := struct {
 		XMLName  xml.Name `xml:"Data"`
 		Series   Series
@@ -290,51 +287,57 @@ func (t *TVDB) SeriesAll(id int, lang string) (*Series, []Episode, error) {
 //TODO: Add BannersBySeries
 
 // EpisodeById gets a single episode by the episode ID.
-func (t *TVDB) EpisodeByID(id int, lang string) (*Episode, error) {
-	u := t.staticAPIURL(fmt.Sprintf("episodes/%d/%s.xml", id, lang))
-	ep := Episode{}
-	if err := getResponse(u.String(), &ep); err != nil {
+func (c *Client) EpisodeByID(id int, lang string) (*Episode, error) {
+	u := c.staticAPIURL(fmt.Sprintf("episodes/%d/%s.xml", id, lang))
+	response := struct {
+		XMLName xml.Name `xml:"Data"`
+		Episode Episode
+	}{}
+	if err := getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
-	return &ep, nil
+	return &response.Episode, nil
 }
 
 // episodeBySeries is a common function to get a single episode from a series
 // ID, series number, and episode number based on a paticular order such as
 // 'dvd' or 'default'
-func (t *TVDB) episodeBySeries(id int, epNum, lang, order string) (*Episode, error) {
-	u := t.staticAPIURL(fmt.Sprintf("series/%s/%s/%s/%s.xml", id, order, epNum, lang))
-	ep := Episode{}
-	if err := getResponse(u.String(), &ep); err != nil {
+func (c *Client) episodeBySeries(id int, epNum, lang, order string) (*Episode, error) {
+	u := c.staticAPIURL(fmt.Sprintf("series/%d/%s/%s/%s.xml", id, order, epNum, lang))
+	resp := struct {
+		XMLName xml.Name `xml:"Data"`
+		Episode Episode
+	}{}
+	if err := getResponse(u.String(), &resp); err != nil {
 		return nil, err
 	}
-	return &ep, nil
+	return &resp.Episode, nil
 }
 
 // EpisodeBySeries gets a single episode from the series ID, the season number,
 // and the episode number and uses the default series episode numbering.
-func (t *TVDB) EpisodeBySeries(id, season, episode int, lang string) (*Episode, error) {
+func (c *Client) EpisodeBySeries(id, season, episode int, lang string) (*Episode, error) {
 	epNum := fmt.Sprintf("%d/%d", season, episode)
-	return t.episodeBySeries(id, epNum, lang, "default")
+	return c.episodeBySeries(id, epNum, lang, "default")
 }
 
 // EpisodeBySeriesDVD gets a single episode from the series ID, the season number,
 // and the episode number and uses the dvd series episode numbering.
-func (t *TVDB) EpisodeBySeriesDVD(id, season, episode int, lang string) (*Episode, error) {
+func (c *Client) EpisodeBySeriesDVD(id, season, episode int, lang string) (*Episode, error) {
 	epNum := fmt.Sprintf("%d/%d", season, episode)
-	return t.episodeBySeries(id, epNum, lang, "dvd")
+	return c.episodeBySeries(id, epNum, lang, "dvd")
 }
 
 // EpisodeBySeriesAbsolute gets a single episode from the series ID, the season number,
 // and the episode number and uses the absolute series episode numbering.
-func (t *TVDB) EpisodeBySeriesAbsolute(id, episode int, lang string) (*Episode, error) {
+func (c *Client) EpisodeBySeriesAbsolute(id, episode int, lang string) (*Episode, error) {
 	epNum := fmt.Sprintf("%d", episode)
-	return t.episodeBySeries(id, epNum, lang, "absolute")
+	return c.episodeBySeries(id, epNum, lang, "absolute")
 }
 
 // userFav is the internal function for UserFav, UserFavAdd, and UserFavRemove
 // since they all use the same API.
-func (t *TVDB) userFavs(accountID, actionType string, seriesID int) ([]int, error) {
+func (c *Client) userFavs(accountID, actionType string, seriesID int) ([]int, error) {
 	query := url.Values{}
 	query.Set("accountid", accountID)
 
@@ -343,7 +346,7 @@ func (t *TVDB) userFavs(accountID, actionType string, seriesID int) ([]int, erro
 		query.Set("seriesid", strconv.FormatInt(int64(seriesID), 10))
 	}
 
-	u := t.apiURL("User_Favorites.php", query)
+	u := c.apiURL("User_Favorites.php", query)
 
 	data := &struct {
 		XMLName xml.Name `xml:"Favorites"`
@@ -356,28 +359,28 @@ func (t *TVDB) userFavs(accountID, actionType string, seriesID int) ([]int, erro
 	return data.Series, nil
 }
 
-// UserFavs gets a list of a TVDB's user favorite series.   Returns the series
+// UserFavs gets a list of a Client's user favorite series.   Returns the series
 // IDs.
 //
 // Note: the accountID here is not the username of the user but rather a special
 // accountID.  Users can retrive thier accountIDs from thier user info page @
 // http://thetvdb.com/?tab=userinfo.
-func (t *TVDB) UserFavs(accountID string) ([]int, error) {
-	return t.userFavs(accountID, "", 0)
+func (c *Client) UserFavs(accountID string) ([]int, error) {
+	return c.userFavs(accountID, "", 0)
 }
 
 // UserFavAdd will add a series by the series id to a users favorites. It will
 // return the modified list. See UserFavs for information on how to use the
 // accountID.
-func (t *TVDB) UserFavAdd(accountID string, seriesID int) ([]int, error) {
-	return t.userFavs(accountID, "add", seriesID)
+func (c *Client) UserFavAdd(accountID string, seriesID int) ([]int, error) {
+	return c.userFavs(accountID, "add", seriesID)
 }
 
 // UserFavRemove will delete a series by the series id from the users
 // favorites.  It will return the modified list.  See UserFavs for information
 // on how to use the accountID.
-func (t *TVDB) UserFavRemove(accountID string, seriesID int) ([]int, error) {
-	return t.userFavs(accountID, "remove", seriesID)
+func (c *Client) UserFavRemove(accountID string, seriesID int) ([]int, error) {
+	return c.userFavs(accountID, "remove", seriesID)
 }
 
 // ratingResult is used in multiple places so it's it defined as the xml return for
@@ -388,15 +391,15 @@ type ratingResult struct {
 }
 
 // userRatings is a common function used for all user rating functions.
-func (t *TVDB) userRatings(accountID string, seriesID int) (*ratingResult, error) {
+func (c *Client) userRatings(accountID string, seriesID int) (*ratingResult, error) {
 	query := url.Values{}
 
-	query.Set("apikey", t.APIKey) //Love the consistency of this API
+	query.Set("apikey", c.APIKey) //Love the consistency of this API
 	query.Set("accountid", accountID)
 	if seriesID != 0 {
 		query.Set("seriesid", strconv.FormatInt(int64(seriesID), 10))
 	}
-	u := t.apiURL("GetRatingsForUser.php", query)
+	u := c.apiURL("GetRatingsForUser.php", query)
 	result := &ratingResult{}
 	if err := getResponse(u.String(), result); err != nil {
 		return nil, err
@@ -406,8 +409,8 @@ func (t *TVDB) userRatings(accountID string, seriesID int) (*ratingResult, error
 }
 
 // UserRatings will get the ratings for all series a user has rated.
-func (t *TVDB) UserRatings(accountID string) ([]*Rating, error) {
-	result, err := t.userRatings(accountID, 0)
+func (c *Client) UserRatings(accountID string) ([]*Rating, error) {
+	result, err := c.userRatings(accountID, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -418,8 +421,8 @@ func (t *TVDB) UserRatings(accountID string) ([]*Rating, error) {
 // UserRatingsSeries will get the user raiting for a single series by the
 // series ID and return the rating for that series as well as all episodes
 // for that series.
-func (t *TVDB) UserRatingsSeries(accountID string, seriesID int) (*Rating, []*Rating, error) {
-	result, err := t.userRatings(accountID, seriesID)
+func (c *Client) UserRatingsSeries(accountID string, seriesID int) (*Rating, []*Rating, error) {
+	result, err := c.userRatings(accountID, seriesID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -429,7 +432,7 @@ func (t *TVDB) UserRatingsSeries(accountID string, seriesID int) (*Rating, []*Ra
 
 // setUserRating is a common function for both SetUserRatingSeries and
 // SetUserRatingEpisode since they utilize the same API.
-func (t *TVDB) setUserRating(accountID, itemType string, itemID, rating int) error {
+func (c *Client) setUserRating(accountID, itemType string, itemID, rating int) error {
 	if rating < 0 || rating > 10 {
 		return fmt.Errorf("Rating must be between 0 and 10 inclusive")
 	}
@@ -439,27 +442,27 @@ func (t *TVDB) setUserRating(accountID, itemType string, itemID, rating int) err
 	query.Set("itemtype", itemType)
 	query.Set("itemid", strconv.FormatInt(int64(itemID), 10))
 	query.Set("rating", strconv.FormatInt(int64(rating), 10))
-	u := t.apiURL("User_Rating.php", query)
+	u := c.apiURL("User_Rating.php", query)
 
 	// This API just returns the global rating.  Lets just ignore it
 	return getResponse(u.String(), nil)
 }
 
 // SetUserRatingSeries will update or set a users rating for a series by series ID
-func (t *TVDB) SetUserRatingSeries(accountID string, seriesID, rating int) error {
-	return t.setUserRating(accountID, "series", seriesID, rating)
+func (c *Client) SetUserRatingSeries(accountID string, seriesID, rating int) error {
+	return c.setUserRating(accountID, "series", seriesID, rating)
 }
 
 // SetUserRatingEp will update or set a users rating for an episode by episode
 // ID.
-func (t *TVDB) SetUserRatingEp(accountID string, epID, rating int) error {
-	return t.setUserRating(accountID, "episode", epID, rating)
+func (c *Client) SetUserRatingEp(accountID string, epID, rating int) error {
+	return c.setUserRating(accountID, "episode", epID, rating)
 }
 
 // UserLang will return the prefered language for a user with a given account
 // id.
-func (t *TVDB) UserLang(accountID string) (*Language, error) {
-	u := t.apiURL("User_PreferredLanguage.php", url.Values{
+func (c *Client) UserLang(accountID string) (*Language, error) {
+	u := c.apiURL("User_PreferredLanguage.php", url.Values{
 		"accountid": []string{accountID},
 	})
 
