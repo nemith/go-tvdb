@@ -23,7 +23,7 @@ func (pipeList *PipeList) UnmarshalXML(decoder *xml.Decoder, start xml.StartElem
 	return nil
 }
 
-// Episode represents a TV show episode on TheClient.
+// Episode represents a TV show episode on TheTVDB.
 type Episode struct {
 	ID                    int      `xml:"id"`
 	CombinedEpisodeNumber string   `xml:"Combined_episodenumber"`
@@ -74,7 +74,7 @@ type SeriesSummary struct {
 	seriesShared
 }
 
-// Series represents TV show on TheClient.
+// Series represents TV show on TheTVDB.
 type Series struct {
 	Actors        PipeList `xml:"Actors"`
 	AirsDayOfWeek string   `xml:"Airs_DayOfWeek"`
@@ -147,7 +147,7 @@ type Client struct {
 	BaseURL *url.URL
 }
 
-// NewClient returns a new Client API instance.:
+// NewClient returns a new TVDB API instance.:
 func NewClient(apiKey string) *Client {
 	return &Client{
 		APIKey: apiKey,
@@ -194,7 +194,7 @@ func (c *Client) staticAPIURL(path string) *url.URL {
 	return &u
 }
 
-// Lanauges gets a list of lanauges currently supported on Client.
+// Lanauges gets a list of lanauges currently supported on TVDB.
 func (c *Client) Languages() ([]Language, error) {
 	u := c.staticAPIURL("languages.xml")
 	response := struct {
@@ -229,7 +229,7 @@ func (c *Client) SearchSeries(term, lang string) ([]SeriesSummary, error) {
 	return response.Series, nil
 }
 
-// SeriesByID gets a single series' details from the Client series id.
+// SeriesByID gets a single series' details from the TVDB series id.
 func (c *Client) SeriesByID(id int, lang string) (*Series, error) {
 	if lang == "" {
 		lang = "en"
@@ -359,7 +359,7 @@ func (c *Client) userFavs(accountID, actionType string, seriesID int) ([]int, er
 	return data.Series, nil
 }
 
-// UserFavs gets a list of a Client's user favorite series.   Returns the series
+// UserFavs gets a list of a TVDB's user favorite series.   Returns the series
 // IDs.
 //
 // Note: the accountID here is not the username of the user but rather a special
