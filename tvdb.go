@@ -60,7 +60,7 @@ func (f ImgFlag) String() string {
 const (
 	ImgFlagNone ImgFlag = iota
 	ImgFlag4x3
-	ImgFlagi16x9
+	ImgFlag16x9
 	ImgFlagBadAspectRatio
 	ImgFlagTooSmall
 	ImgFlagBlackBars
@@ -70,7 +70,7 @@ const (
 var imgFlagNameMap = map[ImgFlag]string{
 	ImgFlagNone:               "None",
 	ImgFlag4x3:                "4:3",
-	ImgFlagi16x9:              "16x9",
+	ImgFlag16x9:               "16x9",
 	ImgFlagBadAspectRatio:     "Bad Aspect Ratio",
 	ImgFlagTooSmall:           "Image Too Small",
 	ImgFlagBlackBars:          "Black Bars",
