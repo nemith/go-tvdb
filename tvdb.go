@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // PipeList type representing pipe-separated string values.
@@ -19,41 +20,210 @@ func (pipeList *PipeList) UnmarshalXML(decoder *xml.Decoder, start xml.StartElem
 		return err
 	}
 
-	*pipeList = strings.Split(strings.Trim(content, "|"), "|")
+	// Empty contents mean just use an empty list
+	if content != "" {
+		*pipeList = strings.Split(strings.Trim(content, "|"), "|")
+	} else {
+		*pipeList = []string{}
+	}
 	return nil
+}
+
+type ImgFlag int
+
+func (f ImgFlag) IsValid() bool {
+	return int(f) == 1 || int(f) == 2
+}
+
+func (f *ImgFlag) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
+	var i int
+	err := decoder.DecodeElement(&i, &start)
+
+	// Check to see if it's empty and return the zero value
+	if nerr, ok := err.(*strconv.NumError); ok && nerr.Num == "" {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	*f = ImgFlag(i)
+	return nil
+}
+
+func (f ImgFlag) String() string {
+	if s, ok := imgFlagNameMap[f]; ok {
+		return s
+	}
+	return strconv.FormatInt(int64(f), 10)
+}
+
+const (
+	ImgFlagNone ImgFlag = iota
+	ImgFlag4x3
+	ImgFlagi16x9
+	ImgFlagBadAspectRatio
+	ImgFlagTooSmall
+	ImgFlagBlackBars
+	ImgFlagImproperActionShot
+)
+
+var imgFlagNameMap = map[ImgFlag]string{
+	ImgFlagNone:               "None",
+	ImgFlag4x3:                "4:3",
+	ImgFlagi16x9:              "16x9",
+	ImgFlagBadAspectRatio:     "Bad Aspect Ratio",
+	ImgFlagTooSmall:           "Image Too Small",
+	ImgFlagBlackBars:          "Black Bars",
+	ImgFlagImproperActionShot: "Improper Action Shot",
+}
+
+type NullInt struct {
+	Int   int
+	Valid bool
+}
+
+func NewNullInt(i int) NullInt {
+	return NullInt{i, true}
+}
+
+func (i *NullInt) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
+	var j int
+	err := decoder.DecodeElement(&j, &start)
+
+	// Check for emptry string
+	if nerr, ok := err.(*strconv.NumError); ok && nerr.Num == "" {
+		// Returns the zero values which will be 0, false
+		return nil
+	} else if err != nil {
+		return err
+	}
+	i.Int = j
+	i.Valid = true
+	// No errors means we parsed the int sucessfully so it is valid
+	return nil
+}
+
+type NullFloat64 struct {
+	Float64 float64
+	Valid   bool
+}
+
+func NewNullFloat64(f float64) NullFloat64 {
+	return NullFloat64{f, true}
+}
+
+func (f *NullFloat64) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
+	var j float64
+	err := decoder.DecodeElement(&j, &start)
+
+	// Check for emptry string
+	if nerr, ok := err.(*strconv.NumError); ok && nerr.Num == "" {
+		// Returns the zero values which will be 0, false
+		return nil
+	} else if err != nil {
+		return err
+	}
+	f.Float64 = j
+	f.Valid = true
+	// No errors means we parsed the int sucessfully so it is valid
+	return nil
+}
+
+type UnixEpochTime time.Time
+
+func (t *UnixEpochTime) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
+	var ut int64
+	if err := decoder.DecodeElement(&ut, &start); err != nil {
+		return err
+	}
+
+	*t = UnixEpochTime(time.Unix(ut, int64(0)).UTC())
+	return nil
+}
+
+type DateTimeStamp time.Time
+
+func NewDateTimeStamp(year int, month time.Month, day, hour, min, sec int) DateTimeStamp {
+	return DateTimeStamp(time.Date(year, month, day, hour, min, sec, 0, time.UTC))
+}
+
+func (t *DateTimeStamp) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
+	var ts string
+	if err := decoder.DecodeElement(&ts, &start); err != nil {
+		return err
+	}
+
+	if ts == "" {
+		*t = NullDateTimeStamp
+		return nil
+	}
+
+	// Reference Time: Mon Jan 2 15:04:05 -0700 MST 2006
+	tm, err := time.Parse("2006-01-02 15:04:05", ts)
+	*t = DateTimeStamp(tm)
+	return err
+}
+
+var (
+	NullDateTimeStamp = NewDateTimeStamp(0, time.January, 0, 0, 0, 0)
+)
+
+type DateStamp time.Time
+
+func NewDateStamp(year int, month time.Month, day int) DateStamp {
+	return DateStamp(time.Date(year, month, day, 0, 0, 0, 0, time.UTC))
+}
+
+func (t *DateStamp) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
+	var ts string
+	if err := decoder.DecodeElement(&ts, &start); err != nil {
+		return err
+	}
+
+	if ts == "" {
+		// Return nil
+		return nil
+	}
+
+	// Reference Time: Mon Jan 2 15:04:05 -0700 MST 2006
+	tm, err := time.Parse("2006-01-02", ts)
+	*t = DateStamp(tm)
+	return err
 }
 
 // Episode represents a TV show episode on TheTVDB.
 type Episode struct {
-	ID                    int      `xml:"id"`
-	CombinedEpisodeNumber string   `xml:"Combined_episodenumber"`
-	CombinedSeason        int      `xml:"Combined_season"`
-	DvdChapter            string   `xml:"DVD_chapter"`
-	DvdDiscID             string   `xml:"DVD_discid"`
-	DvdEpisodeNumber      string   `xml:"DVD_episodenumber"`
-	DvdSeason             string   `xml:"DVD_season"`
-	Director              PipeList `xml:"Director"`
-	EpImgFlag             string   `xml:"EpImgFlag"`
-	EpisodeName           string   `xml:"EpisodeName"`
-	EpisodeNumber         int      `xml:"EpisodeNumber"`
-	FirstAired            string   `xml:"FirstAired"`
-	GuestStars            string   `xml:"GuestStars"`
-	ImdbID                string   `xml:"IMDB_ID"`
-	Language              string   `xml:"Language"`
-	Overview              string   `xml:"Overview"`
-	ProductionCode        string   `xml:"ProductionCode"`
-	Rating                string   `xml:"Rating"`
-	RatingCount           string   `xml:"RatingCount"`
-	SeasonNumber          int      `xml:"SeasonNumber"`
-	Writer                PipeList `xml:"Writer"`
-	AbsoluteNumber        string   `xml:"absolute_number"`
-	Filename              string   `xml:"filename"`
-	LastUpdated           string   `xml:"lastupdated"`
-	SeasonID              int      `xml:"seasonid"`
-	SeriesID              int      `xml:"seriesid"`
-	ThumbAdded            string   `xml:"thumb_added"`
-	ThumbHeight           string   `xml:"thumb_height"`
-	ThumbWidth            string   `xml:"thumb_width"`
+	ID                    int    `xml:"id"`
+	CombinedEpisodeNumber string `xml:"Combined_episodenumber"`
+	CombinedSeason        int    `xml:"Combined_season"`
+	// TODO: Handle this better.  This cam be 1 or 1.1
+	DVDEpisodeNumber string        `xml:"DVD_episodenumber,omitempty"`
+	DVDSeason        NullInt       `xml:"DVD_season,omitempty"`
+	Director         PipeList      `xml:"Director"`
+	EpImgFlag        ImgFlag       `xml:"EpImgFlag"`
+	EpisodeName      string        `xml:"EpisodeName"`
+	EpisodeNumber    int           `xml:"EpisodeNumber"`
+	FirstAired       DateStamp     `xml:"FirstAired"` // Date string
+	GuestStars       PipeList      `xml:"GuestStars"`
+	ImdbID           string        `xml:"IMDB_ID"`
+	Language         string        `xml:"Language"`
+	Overview         string        `xml:"Overview"`
+	ProductionCode   string        `xml:"ProductionCode"`
+	Rating           NullFloat64   `xml:"Rating"`
+	RatingCount      NullInt       `xml:"RatingCount"`
+	SeasonNumber     int           `xml:"SeasonNumber"`
+	Writer           PipeList      `xml:"Writer"`
+	AbsoluteNumber   NullInt       `xml:"absolute_number"`
+	BannerFilename   string        `xml:"filename"`
+	LastUpdated      UnixEpochTime `xml:"lastupdated"` // Unix Timestamp
+	SeasonID         int           `xml:"seasonid"`
+	SeriesID         int           `xml:"seriesid"`
+	ThumbAdded       DateTimeStamp `xml:"thumb_added"` //Date/Time
+	ThumbHeight      NullInt       `xml:"thumb_height"`
+	ThumbWidth       NullInt       `xml:"thumb_width"`
+	// Deprecated
+	//DvdChapter            int   `xml:"DVD_chapter"`
+	//DvdDiscID             string   `xml:"DVD_discid"`
 }
 
 type seriesShared struct {
