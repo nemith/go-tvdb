@@ -132,16 +132,14 @@ func TestSearchSeries(t *testing.T) {
 
 	want := SeriesSummary{
 		Aliases: pipeList(nil),
-		seriesShared: seriesShared{
-			ID: 71663, Language: "en",
-			Name:       "The Simpsons",
-			BannerPath: "graphical/71663-g13.jpg",
-			Overview:   "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
-			FirstAired: Date(1989, time.December, 17),
-			IMDBID:     "tt0096697",
-			Zap2itID:   "EP00018693",
-			Network:    "FOX",
-		},
+		ID:      71663, Language: "en",
+		Name:       "The Simpsons",
+		BannerPath: "graphical/71663-g13.jpg",
+		Overview:   "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
+		FirstAired: Date(1989, time.December, 17),
+		IMDBID:     "tt0096697",
+		Zap2itID:   "EP00018693",
+		Network:    "FOX",
 	}
 
 	if !reflect.DeepEqual(series[0], want) {
@@ -176,16 +174,15 @@ func TestSeriesByID(t *testing.T) {
 		FanartPath:    "fanart/original/71663-31.jpg",
 		LastUpdated:   unixTime{time.Date(2015, time.January, 27, 21, 46, 38, 0, time.UTC)},
 		PostersPath:   "",
-		seriesShared: seriesShared{
-			ID:         71663,
-			Language:   "",
-			Name:       "The Simpsons",
-			BannerPath: "graphical/71663-g13.jpg",
-			Overview:   "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
-			FirstAired: Date(1989, time.December, 17),
-			IMDBID:     "tt0096697",
-			Zap2itID:   "EP00018693",
-			Network:    "FOX"},
+		ID:            71663,
+		Language:      "",
+		Name:          "The Simpsons",
+		BannerPath:    "graphical/71663-g13.jpg",
+		Overview:      "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
+		FirstAired:    Date(1989, time.December, 17),
+		IMDBID:        "tt0096697",
+		Zap2itID:      "EP00018693",
+		Network:       "FOX",
 	}
 
 	if !reflect.DeepEqual(series, want) {
@@ -213,15 +210,13 @@ func TestSeriesByRemoteID(t *testing.T) {
 
 	want := &SeriesSummary{
 		Aliases: nil,
-		seriesShared: seriesShared{
-			ID: 71663, Language: "en",
-			Name:       "The Simpsons",
-			BannerPath: "graphical/71663-g13.jpg",
-			Overview:   "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
-			FirstAired: Date(1989, time.December, 17),
-			IMDBID:     "tt0096697",
-			Zap2itID:   "EP00018693",
-		},
+		ID:      71663, Language: "en",
+		Name:       "The Simpsons",
+		BannerPath: "graphical/71663-g13.jpg",
+		Overview:   "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
+		FirstAired: Date(1989, time.December, 17),
+		IMDBID:     "tt0096697",
+		Zap2itID:   "EP00018693",
 	}
 
 	if !reflect.DeepEqual(series, want) {
@@ -256,16 +251,15 @@ func TestSeriesAllByID(t *testing.T) {
 		FanartPath:    "fanart/original/71663-31.jpg",
 		LastUpdated:   unixTime{time.Date(2015, time.January, 30, 18, 51, 41, 0, time.UTC)},
 		PostersPath:   "",
-		seriesShared: seriesShared{
-			ID:         71663,
-			Language:   "",
-			Name:       "The Simpsons",
-			BannerPath: "graphical/71663-g13.jpg",
-			Overview:   "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
-			FirstAired: Date(1989, 12, 17),
-			IMDBID:     "tt0096697",
-			Zap2itID:   "EP00018693",
-			Network:    "FOX"},
+		ID:            71663,
+		Language:      "",
+		Name:          "The Simpsons",
+		BannerPath:    "graphical/71663-g13.jpg",
+		Overview:      "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
+		FirstAired:    Date(1989, 12, 17),
+		IMDBID:        "tt0096697",
+		Zap2itID:      "EP00018693",
+		Network:       "FOX",
 	}
 
 	episodeWant := Episode{

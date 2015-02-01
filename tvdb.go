@@ -233,26 +233,31 @@ type Episode struct {
 	//DvdDiscID             string   `xml:"DVD_discid"`
 }
 
-type seriesShared struct {
-	ID         int    `xml:"id"`
-	Language   string `xml:"language"`
-	Name       string `xml:"SeriesName"`
-	BannerPath string `xml:"banner"`
-	Overview   string `xml:"Overview"`
-	FirstAired date   `xml:"FirstAired"`
-	IMDBID     string `xml:"IMDB_ID"`
-	Zap2itID   string `xml:"zap2it_id"`
-	Network    string `xml:"Network"`
-}
-
 // SeriesSummary is returned from GetSeries
 type SeriesSummary struct {
-	Aliases pipeList `xml:"AliasNames,omitempty"`
-	seriesShared
+	ID         int      `xml:"id"`
+	Language   string   `xml:"language"`
+	Name       string   `xml:"SeriesName"`
+	BannerPath string   `xml:"banner"`
+	Overview   string   `xml:"Overview"`
+	FirstAired date     `xml:"FirstAired"`
+	IMDBID     string   `xml:"IMDB_ID"`
+	Zap2itID   string   `xml:"zap2it_id"`
+	Network    string   `xml:"Network"`
+	Aliases    pipeList `xml:"AliasNames,omitempty"`
 }
 
 // Series represents TV show on TheTVDB.
 type Series struct {
+	ID            int         `xml:"id"`
+	Language      string      `xml:"language"`
+	Name          string      `xml:"SeriesName"`
+	BannerPath    string      `xml:"banner"`
+	Overview      string      `xml:"Overview"`
+	FirstAired    date        `xml:"FirstAired"`
+	IMDBID        string      `xml:"IMDB_ID"`
+	Zap2itID      string      `xml:"zap2it_id"`
+	Network       string      `xml:"Network"`
 	Actors        pipeList    `xml:"Actors"`
 	AirsDayOfWeek string      `xml:"Airs_DayOfWeek"`
 	AirsTime      string      `xml:"Airs_Time"`
@@ -267,7 +272,6 @@ type Series struct {
 	FanartPath    string      `xml:"fanart"`
 	PostersPath   string      `xml:"posters"`
 	LastUpdated   unixTime    `xml:"lastupdated"`
-	seriesShared
 }
 
 // Langage format used for Client responses.
