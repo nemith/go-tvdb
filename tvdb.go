@@ -133,7 +133,9 @@ func (f *nullFloat64) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement)
 
 var NulFloat64 = nullFloat64{0, false}
 
-type unixTime time.Time
+type unixTime struct {
+	time.Time
+}
 
 func (t *unixTime) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
 	var ut int64
@@ -141,14 +143,16 @@ func (t *unixTime) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) er
 		return err
 	}
 
-	*t = unixTime(time.Unix(ut, int64(0)).UTC())
+	t.Time = time.Unix(ut, int64(0)).UTC()
 	return nil
 }
 
-type dateTime time.Time
+type dateTime struct {
+	time.Time
+}
 
 func DateTime(year int, month time.Month, day, hour, min, sec int) dateTime {
-	return dateTime(time.Date(year, month, day, hour, min, sec, 0, time.UTC))
+	return dateTime{time.Date(year, month, day, hour, min, sec, 0, time.UTC)}
 }
 
 func (t *dateTime) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
@@ -163,17 +167,19 @@ func (t *dateTime) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) er
 	}
 
 	// Reference Time: Mon Jan 2 15:04:05 -0700 MST 2006
-	tm, err := time.Parse("2006-01-02 15:04:05", ts)
-	*t = dateTime(tm)
+	var err error
+	t.Time, err = time.Parse("2006-01-02 15:04:05", ts)
 	return err
 }
 
 var NullDateTime = DateTime(0, time.January, 0, 0, 0, 0)
 
-type date time.Time
+type date struct {
+	time.Time
+}
 
 func Date(year int, month time.Month, day int) date {
-	return date(time.Date(year, month, day, 0, 0, 0, 0, time.UTC))
+	return date{time.Date(year, month, day, 0, 0, 0, 0, time.UTC)}
 }
 
 func (t *date) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error {
@@ -188,8 +194,8 @@ func (t *date) UnmarshalXML(decoder *xml.Decoder, start xml.StartElement) error 
 	}
 
 	// Reference Time: Mon Jan 2 15:04:05 -0700 MST 2006
-	tm, err := time.Parse("2006-01-02", ts)
-	*t = date(tm)
+	var err error
+	t.Time, err = time.Parse("2006-01-02", ts)
 	return err
 }
 
