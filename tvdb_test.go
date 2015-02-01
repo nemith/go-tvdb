@@ -366,8 +366,14 @@ func TestEpisodeBySeries(t *testing.T) {
 	mux.Handle(fmt.Sprintf("/api/%s/series/71663/dvd/1/1/en.xml", apiKey), dvdHandler)
 	mux.Handle(fmt.Sprintf("/api/%s/series/71663/absolute/1/en.xml", apiKey), absHandler)
 
-	for order, ep := range map[string]string{"default": "1/1", "dvd": "1/1", "absolute": "1"} {
-		episode, err := client.episodeBySeries(71663, ep, "en", order)
+	funcMap := map[string]func() (*Episode, error){
+		"default":  func() (*Episode, error) { return client.EpisodeBySeries(71663, 1, 1, "en") },
+		"dvd":      func() (*Episode, error) { return client.EpisodeBySeriesDVD(71663, 1, 1, "en") },
+		"absolute": func() (*Episode, error) { return client.EpisodeBySeriesAbsolute(71663, 1, "en") },
+	}
+
+	for order, f := range funcMap {
+		episode, err := f()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -406,4 +412,121 @@ func TestEpisodeBySeries(t *testing.T) {
 			t.Errorf("episodeBySeries repsonse does not match for order '%s' \n%s", order, pretty.Compare(want, episode))
 		}
 	}
+}
+
+func TestUserFavs(t *testing.T) {
+	client := setup()
+
+	getHandler := newFileHandler(`testdata/User_Favorites.php?accountid=D4FDF436DA8BD059`)
+	addHandler := newFileHandler(`testdata/User_Favorites.php?accountid=D4FDF436DA8BD059&type=add&seriesid=80348`)
+	removeHandler := newFileHandler(`testdata/User_Favorites.php?accountid=D4FDF436DA8BD059&type=remove&seriesid=80348`)
+
+	defer func() {
+		teardown()
+		getHandler.Close()
+		addHandler.Close()
+		removeHandler.Close()
+	}()
+
+	mux.HandleFunc("/api/User_Favorites.php",
+		func(w http.ResponseWriter, r *http.Request) {
+			switch r.FormValue("type") {
+			case "":
+				testFormValues(t, r, values{
+					"accountid": "D4FDF436DA8BD059",
+				})
+				getHandler.ServeHTTP(w, r)
+				return
+			case "add":
+				testFormValues(t, r, values{
+					"accountid": "D4FDF436DA8BD059",
+					"type":      "add",
+					"seriesid":  "80348",
+				})
+				addHandler.ServeHTTP(w, r)
+				return
+			case "remove":
+				testFormValues(t, r, values{
+					"accountid": "D4FDF436DA8BD059",
+					"type":      "remove",
+					"seriesid":  "80348",
+				})
+				removeHandler.ServeHTTP(w, r)
+				return
+			}
+			t.Errorf("Unknown request 'type' in url '%s'", r.URL)
+
+		})
+
+	want := []int{
+		79349,
+		84912,
+		112671,
+		79298,
+		73388,
+		71663,
+		75978,
+		161511,
+		73871,
+		95011,
+		250487,
+		73141,
+		75710,
+		82459,
+		75805,
+		80379,
+		110381,
+		255316,
+		265912,
+		121361,
+		277165,
+		262980,
+		269613,
+		266091,
+		176941,
+		247808,
+		78804,
+		74608,
+		261690,
+		153021,
+		193131,
+		82696,
+		275274,
+		264492,
+		161461,
+		152831,
+		282785,
+		271910,
+		260315,
+	}
+
+	got, err := client.UserFavs("D4FDF436DA8BD059")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("userFavs does not match.\n%s", pretty.Compare(got, want))
+	}
+
+	gotAdd, err := client.UserFavAdd("D4FDF436DA8BD059", 80348)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newWant := append(want, 80348)
+
+	if !reflect.DeepEqual(gotAdd, newWant) {
+		t.Errorf("UserFavs does not match.\n%s", pretty.Compare(gotAdd, newWant))
+	}
+
+	gotRemove, err := client.UserFavRemove("D4FDF436DA8BD059", 80348)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(gotRemove, want) {
+		t.Errorf("UserFavs does not match.\n%s", pretty.Compare(gotRemove, want))
+	}
+
 }
