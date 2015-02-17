@@ -323,8 +323,9 @@ const (
 
 // Client is the base of all API calls to thetvdb.com.
 type Client struct {
-	APIKey  string
-	BaseURL *url.URL
+	APIKey     string
+	BaseURL    *url.URL
+	HTTPClient *http.Client
 }
 
 // NewClient returns a new TVDB API instance.:
@@ -335,12 +336,13 @@ func NewClient(apiKey string) *Client {
 			Scheme: "http",
 			Host:   "thetvdb.com",
 		},
+		HTTPClient: &http.Client{},
 	}
 }
 
 // getReponse does the heavy lifting by fetching and decoding API responses.
-func getResponse(url string, v interface{}) error {
-	resp, err := http.Get(url)
+func (c *Client) getResponse(url string, v interface{}) error {
+	resp, err := c.HTTPClient.Get(url)
 	if err != nil {
 		return err
 	}
@@ -381,7 +383,7 @@ func (c *Client) Languages() ([]Language, error) {
 		XMLName xml.Name   `xml:"Languages"`
 		Langs   []Language `xml:"Language"`
 	}{}
-	if err := getResponse(u.String(), &response); err != nil {
+	if err := c.getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
 	return response.Langs, nil
@@ -403,7 +405,7 @@ func (c *Client) SearchSeries(term, lang string) ([]SeriesSummary, error) {
 		XMLName xml.Name `xml:"Data"`
 		Series  []SeriesSummary
 	}{}
-	if err := getResponse(u.String(), &response); err != nil {
+	if err := c.getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
 	return response.Series, nil
@@ -419,7 +421,7 @@ func (c *Client) SeriesByID(id int, lang string) (*Series, error) {
 		XMLName xml.Name `xml:"Data"`
 		Series  Series
 	}{}
-	if err := getResponse(u.String(), &response); err != nil {
+	if err := c.getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
 
@@ -440,7 +442,7 @@ func (c *Client) SeriesByRemoteID(service RemoteService, id, lang string) (*Seri
 		XMLName xml.Name `xml:"Data"`
 		Series  SeriesSummary
 	}{}
-	if err := getResponse(u.String(), &response); err != nil {
+	if err := c.getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
 
@@ -456,7 +458,7 @@ func (c *Client) SeriesAllByID(id int, lang string) (*Series, []Episode, error) 
 		Series   Series
 		Episodes []Episode `xml:"Episode"`
 	}{}
-	if err := getResponse(u.String(), &response); err != nil {
+	if err := c.getResponse(u.String(), &response); err != nil {
 		return nil, nil, err
 	}
 	return &response.Series, response.Episodes, nil
@@ -473,7 +475,7 @@ func (c *Client) EpisodeByID(id int, lang string) (*Episode, error) {
 		XMLName xml.Name `xml:"Data"`
 		Episode Episode
 	}{}
-	if err := getResponse(u.String(), &response); err != nil {
+	if err := c.getResponse(u.String(), &response); err != nil {
 		return nil, err
 	}
 	return &response.Episode, nil
@@ -488,7 +490,7 @@ func (c *Client) episodeBySeries(id int, epNum, lang, order string) (*Episode, e
 		XMLName xml.Name `xml:"Data"`
 		Episode Episode
 	}{}
-	if err := getResponse(u.String(), &resp); err != nil {
+	if err := c.getResponse(u.String(), &resp); err != nil {
 		return nil, err
 	}
 	return &resp.Episode, nil
@@ -533,7 +535,7 @@ func (c *Client) userFavs(accountID, actionType string, seriesID int) ([]int, er
 		Series  []int
 	}{}
 
-	if err := getResponse(u.String(), data); err != nil {
+	if err := c.getResponse(u.String(), data); err != nil {
 		return nil, err
 	}
 	return data.Series, nil
@@ -581,7 +583,7 @@ func (c *Client) userRatings(accountID string, seriesID int) (*ratingResult, err
 	}
 	u := c.apiURL("GetRatingsForUser.php", query)
 	result := &ratingResult{}
-	if err := getResponse(u.String(), result); err != nil {
+	if err := c.getResponse(u.String(), result); err != nil {
 		return nil, err
 	}
 
@@ -625,7 +627,7 @@ func (c *Client) setUserRating(accountID, itemType string, itemID, rating int) e
 	u := c.apiURL("User_Rating.php", query)
 
 	// This API just returns the global rating.  Lets just ignore it
-	return getResponse(u.String(), nil)
+	return c.getResponse(u.String(), nil)
 }
 
 // SetUserRatingSeries will update or set a users rating for a series by series ID
@@ -649,7 +651,7 @@ func (c *Client) UserLang(accountID string) (*Language, error) {
 	resp := &struct {
 		Lang Language `xml:"Language"`
 	}{}
-	if err := getResponse(u.String(), resp); err != nil {
+	if err := c.getResponse(u.String(), resp); err != nil {
 		return nil, err
 	}
 
