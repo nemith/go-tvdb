@@ -301,6 +301,31 @@ func TestSeriesAllByID(t *testing.T) {
 	}
 }
 
+func TestActorsBySeries(t *testing.T) {
+	client := setup()
+	defer teardown()
+
+	handler = newFileHandler("testdata/series_71663_actors.xml")
+	mux.Handle(fmt.Sprintf("/api/%s/series/71663/actors.xml", apiKey), handler)
+
+	actors, err := client.ActorsBySeries(71663)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := Actor{
+		ID:        11380,
+		Image:     `actors/11380.jpg`,
+		Name:      `Dan Castellaneta`,
+		Role:      pipeList{`Homer Simpson`, `Krusty the Clown`, `Grampa Simpson`, `Barney Gumble`, `Mayor Quimby`, `Groundskeeper Willie`},
+		SortOrder: 0,
+	}
+
+	if !reflect.DeepEqual(actors[0], want) {
+		t.Errorf("Response does not match.  \n%s", pretty.Compare(want, actors[0]))
+	}
+}
+
 func TestEpisodeByID(t *testing.T) {
 	client := setup()
 	defer teardown()

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Actors>
+<Actor>
+  <id>11380</id>
+  <Image>actors/11380.jpg</Image>
+  <Name>Dan Castellaneta</Name>
+  <Role>Homer Simpson|Krusty the Clown|Grampa Simpson|Barney Gumble|Mayor Quimby|Groundskeeper Willie</Role>
+  <SortOrder>0</SortOrder>
+</Actor>
+<Actor>
+  <id>11377</id>
+  <Image>actors/11377.jpg</Image>
+  <Name>Hank Azaria</Name>
+  <Role>Moe Szyslak|Apu Nahasapeemapetilon|Chief Clancy Wiggum|Professor Frink|Dr. Nick Riviera|Comic Book Guy|Lou|Carl Carlson|Snake|Kirk Van Houten|Superintendent Chalmers</Role>
+  <SortOrder>1</SortOrder>
+</Actor>
+<Actor>
+  <id>11378</id>
+  <Image>actors/11378.jpg</Image>
+  <Name>Harry Shearer</Name>
+  <Role>Charles Montgomery Burns|Nedward &quot;Ned&quot; Flanders|Principal Seymour Skinner|Reverend Timothy Lovejoy|Otto Mann|Waylon Smithers|Dr. Marvin Monroe</Role>
+  <SortOrder>2</SortOrder>
+</Actor>
+<Actor>
+  <id>299807</id>
+  <Image>actors/299807.jpg</Image>
+  <Name>Marcia Wallace</Name>
+  <Role>Edna Krabappel|Mrs. Krabappel|Cat Lady</Role>
+  <SortOrder>3</SortOrder>
+</Actor>
+<Actor>
+  <id>11381</id>
+  <Image>actors/11381.jpg</Image>
+  <Name>Julie Kavner</Name>
+  <Role>Marge Simpson|Patty Bouvier|Selma Bouvier Terwilliger Hutz McClure|Grandma Jacqueline Bouvier|Aunt Gladys Bouvier</Role>
+  <SortOrder>3</SortOrder>
+</Actor>
+<Actor>
+  <id>11379</id>
+  <Image>actors/11379.jpg</Image>
+  <Name>Yeardley Smith</Name>
+  <Role>Lisa Simpson</Role>
+  <SortOrder>3</SortOrder>
+</Actor>
+<Actor>
+  <id>11376</id>
+  <Image>actors/11376.jpg</Image>
+  <Name>Nancy Cartwright</Name>
+  <Role>Bart Simpson|Nelson Muntz|Todd Flanders|Ralph Wiggum|Kearney</Role>
+  <SortOrder>3</SortOrder>
+</Actor>
+</Actors>
