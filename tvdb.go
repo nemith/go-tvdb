@@ -274,6 +274,15 @@ type Series struct {
 	LastUpdated   unixTime    `xml:"lastupdated"`
 }
 
+// Actor represents actor on TheTVDB.
+type Actor struct {
+	ID        int      `xml:"id"`
+	Image     string   `xml:"Image"`
+	Name      string   `xml:"Name"`
+	Role      pipeList `xml:"Role"`
+	SortOrder int      `xml:"SortOrder"`
+}
+
 // Langage format used for Client responses.
 type Language struct {
 	ID   int    `xml:"id"`
@@ -464,8 +473,20 @@ func (c *Client) SeriesAllByID(id int, lang string) (*Series, []Episode, error) 
 	return &response.Series, response.Episodes, nil
 }
 
+// ActorsBySeries returns a list of the actors for a series
+func (c *Client) ActorsBySeries(id int) ([]Actor, error) {
+	u := c.staticAPIURL(fmt.Sprintf("series/%d/actors.xml", id))
+	response := struct {
+		XMLName xml.Name `xml:"Actors"`
+		Actors  []Actor  `xml:"Actor"`
+	}{}
+	if err := c.getResponse(u.String(), &response); err != nil {
+		return nil, err
+	}
+	return response.Actors, nil
+}
+
 //TODO: Add SeriesEverything to get the zip and parse it
-//TODO: Add ActorsBySeries
 //TODO: Add BannersBySeries
 
 // EpisodeById gets a single episode by the episode ID.
