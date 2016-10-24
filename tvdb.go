@@ -270,7 +270,7 @@ type Series struct {
 	Added         dateTime    `xml:"added"`
 	AddedBy       nullInt     `xml:"addedBy"`
 	FanartPath    string      `xml:"fanart"`
-	PostersPath   string      `xml:"posters"`
+	PostersPath   string      `xml:"poster"`
 	LastUpdated   unixTime    `xml:"lastupdated"`
 }
 
